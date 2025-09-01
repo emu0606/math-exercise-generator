@@ -1,0 +1,215 @@
+/* 數學測驗生成器 - 樣式表 */
+
+/* 全局樣式 */
+QWidget {
+    font-family: "Microsoft JhengHei", "微軟正黑體", "Noto Sans TC", sans-serif;
+    font-size: 12px;
+    color: #333333;
+}
+
+/* 標題樣式 */
+QLabel#title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+/* 群組框樣式 */
+QGroupBox {
+    border: 1px solid #bdc3c7;
+    border-radius: 5px;
+    margin-top: 1ex;
+    padding: 10px;
+    background-color: #f8f9fa;
+}
+
+QGroupBox::title {
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 5px;
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+/* 按鈕樣式 */
+QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+}
+
+QPushButton:hover {
+    background-color: #2980b9;
+}
+
+QPushButton:pressed {
+    background-color: #1a5276;
+}
+
+QPushButton:disabled {
+    background-color: #bdc3c7;
+    color: #7f8c8d;
+}
+
+/* 控制按鈕樣式 */
+QPushButton#controlButton {
+    background-color: #ecf0f1;
+    color: #2c3e50;
+    border: 1px solid #bdc3c7;
+}
+
+QPushButton#controlButton:hover {
+    background-color: #d6dbdf;
+}
+
+QPushButton#controlButton:pressed {
+    background-color: #bdc3c7;
+}
+
+/* 圖示按鈕樣式 */
+QPushButton#iconButton {
+    background-color: transparent;
+    border: none;
+    padding: 2px;
+}
+
+QPushButton#iconButton:hover {
+    background-color: #ecf0f1;
+}
+
+QPushButton#iconButton:pressed {
+    background-color: #bdc3c7;
+}
+
+/* 生成按鈕樣式 */
+QPushButton#generateBtn {
+    background-color: #27ae60;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QPushButton#generateBtn:hover {
+    background-color: #219955;
+}
+
+QPushButton#generateBtn:pressed {
+    background-color: #1e8449;
+}
+
+QPushButton#generateBtn:disabled {
+    background-color: #bdc3c7;
+    color: #7f8c8d;
+}
+
+/* 輸入框樣式 */
+QLineEdit {
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: white;
+}
+
+QLineEdit:focus {
+    border: 1px solid #3498db;
+}
+
+/* 微調框樣式 */
+QSpinBox {
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: white;
+}
+
+QSpinBox:focus {
+    border: 1px solid #3498db;
+}
+
+/* 勾選框樣式 */
+QCheckBox {
+    spacing: 5px;
+}
+
+QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+}
+
+QCheckBox::indicator:unchecked {
+    image: url(assets/icons/square.svg);
+}
+
+QCheckBox::indicator:checked {
+    image: url(assets/icons/check-square.svg);
+}
+
+QCheckBox::indicator:indeterminate {
+    image: url(assets/icons/minus-square.svg);
+}
+
+/* 類別框架樣式 */
+QFrame#categoryFrame {
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    margin: 2px 0;
+}
+
+QFrame#categoryFrame:hover {
+    background-color: #d6dbdf;
+}
+
+/* 子類別框架樣式 */
+QFrame#subcategoryFrame {
+    background-color: white;
+    border-radius: 4px;
+    margin: 1px 0;
+}
+
+QFrame#subcategoryFrame:hover {
+    background-color: #f5f5f5;
+}
+
+/* 類別勾選框樣式 */
+QCheckBox#categoryCheckbox {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+/* 子類別勾選框樣式 */
+QCheckBox#subcategoryCheckbox {
+    color: #34495e;
+}
+
+/* 捲動區域樣式 */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+QScrollBar:vertical {
+    border: none;
+    background-color: #f0f0f0;
+    width: 10px;
+    margin: 0px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #bdc3c7;
+    min-height: 20px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #95a5a6;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}

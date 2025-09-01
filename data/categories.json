@@ -1,0 +1,98 @@
+{
+  "categories": [
+    {
+      "name": "數與式",
+      "subcategories": [
+        {
+          "name": "重根式的化簡",
+          "description": "簡化含有雙重根號的數學表達式"
+        }
+      ]
+    },
+    {
+      "name": "指數、對數",
+      "subcategories": []
+    },
+    {
+      "name": "多項式函數",
+      "subcategories": []
+    },
+    {
+      "name": "直線與圓",
+      "subcategories": []
+    },
+    {
+      "name": "數列與級數",
+      "subcategories": []
+    },
+    {
+      "name": "數據分析",
+      "subcategories": []
+    },
+    {
+      "name": "排列組合",
+      "subcategories": []
+    },
+    {
+      "name": "機率",
+      "subcategories": []
+    },
+    {
+      "name": "三角比",
+      "subcategories": [
+        {
+          "name": "三角函數值計算",
+          "description": "特殊角三角函數計算，角度"
+        }
+	  ]
+    },
+    {
+      "name": "三角函數",
+      "subcategories": []
+    },
+    {
+      "name": "指數與對數函數",
+      "subcategories": []
+    },
+    {
+      "name": "平面向量",
+      "subcategories": []
+    },
+    {
+      "name": "空間向量",
+      "subcategories": []
+    },
+    {
+      "name": "空間中的平面與直線",
+      "subcategories": []
+    },
+    {
+      "name": "矩陣",
+      "subcategories": []
+    },
+    {
+      "name": "極限",
+      "subcategories": []
+    },
+    {
+      "name": "微分",
+      "subcategories": []
+    },
+    {
+      "name": "積分",
+      "subcategories": []
+    },
+    {
+      "name": "二次曲線",
+      "subcategories": []
+    },
+    {
+      "name": "複數",
+      "subcategories": []
+    },
+    {
+      "name": "統計機率",
+      "subcategories": []
+    }
+  ]
+}
