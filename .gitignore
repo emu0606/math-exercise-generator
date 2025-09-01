@@ -69,3 +69,7 @@ backup/
 # Temporary files
 *.temp
 .temp/
+
+# Large font files (exceed GitHub limit)
+assets/fonts/*.zip
+assets/fonts/*.ttc
