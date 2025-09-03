@@ -12,11 +12,12 @@ import math
 from typing import Any # Import Any for type hinting
 
 # 假設此腳本與 utils, figures 等目錄在同一級別或 Python 路徑已配置
-from utils.geometry_utils import (
-    Point, get_vertices, TriangleDefinitionError,
-    get_midpoint, get_centroid, get_incenter, get_circumcenter, get_orthocenter,
-    get_arc_render_params, get_label_placement_params, _distance
-)
+from utils.geometry.types import Point
+from utils.geometry.triangle_constructions import TriangleConstructor, TriangleDefinitionError
+from utils.geometry.basic_ops import midpoint, distance
+from utils.geometry.triangle_centers import TriangleCenterCalculator
+from utils.tikz.arc_renderer import ArcRenderer
+from utils.tikz.label_positioner import LabelPositioner
 
 # --- 繪圖輔助函數 ---
 

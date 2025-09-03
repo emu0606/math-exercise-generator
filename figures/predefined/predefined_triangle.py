@@ -15,11 +15,28 @@ from ..params_models import (
     PredefinedTriangleParams, PointTuple,
     LabelParams, ArcParams, BasicTriangleParams # For constructing sub-figure params
 )
-from utils.geometry_utils import (
-    get_vertices, TriangleDefinitionError,
-    get_midpoint, get_centroid, get_incenter, get_circumcenter, get_orthocenter,
-    get_arc_render_params, get_label_placement_params, _distance
+# 新架構 API
+from utils import (
+    construct_triangle,
+    TriangleConstructionError as TriangleDefinitionError,
+    distance,
+    midpoint,
+    get_centroid,
+    get_incenter,
+    get_circumcenter,
+    get_orthocenter,
+    Point,
+    Triangle
 )
+from utils.tikz import (
+    ArcRenderer,
+    position_vertex_label_auto,
+    position_side_label_auto,
+    position_angle_label_auto
+)
+
+# 初始化渲染器
+arc_renderer = ArcRenderer()
 
 @register_figure_generator
 class PredefinedTriangleGenerator(FigureGenerator):
@@ -81,7 +98,8 @@ class PredefinedTriangleGenerator(FigureGenerator):
 
 
         try:
-            p1, p2, p3 = get_vertices(**actual_vertex_params)
+            triangle = construct_triangle(config.definition_mode, **{k: v for k, v in actual_vertex_params.items() if k != 'definition_mode'})
+            p1, p2, p3 = (triangle.p1.x, triangle.p1.y), (triangle.p2.x, triangle.p2.y), (triangle.p3.x, triangle.p3.y)
         except (TriangleDefinitionError, ValueError, NotImplementedError) as e:
             # Handle error, maybe return an error message in TikZ
             return f"% Error generating triangle vertices: {e}"
@@ -159,14 +177,14 @@ class PredefinedTriangleGenerator(FigureGenerator):
                 # 獲取定位參數
                 current_offset = label_style_cfg.default_offset_override if label_style_cfg.default_offset_override is not None else config.global_label_default_offset
                 
-                placement_info = get_label_placement_params(
-                    element_type='vertex',
-                    target_elements={'vertex_coord': v_coord},
-                    all_vertices=all_vertices_tuple,
-                    special_points={}, # TODO: Pass actual special points if calculated and needed
-                    user_preference="auto", # TODO: Allow user_preference from config
-                    default_offset=current_offset
-                )
+                # 使用新的標籤定位API
+                adjacent_vertices = [v for v in vertex_coords if v != v_coord]
+                label_params = position_vertex_label_auto(v_coord, adjacent_vertices, current_offset)
+                placement_info = {
+                    'reference_point': (label_params.position.x, label_params.position.y),
+                    'label_anchor': label_params.tikz_anchor,
+                    'rotation': label_params.rotation_angle
+                }
 
                 # 準備 LabelParams
                 label_params_dict: Dict[str, Any] = {
@@ -209,7 +227,7 @@ class PredefinedTriangleGenerator(FigureGenerator):
             if side_config.show_label:
                 label_style_cfg = side_config.label_style # Guaranteed by default_factory
                 actual_text_for_label = ""
-                side_len = _distance(sp, ep)
+                side_len = distance(sp, ep)
                 effective_math_mode = False # Default for side labels unless overridden or default_name
 
                 if side_config.label_text_type == 'custom' and side_config.custom_label_text is not None:
@@ -246,20 +264,19 @@ class PredefinedTriangleGenerator(FigureGenerator):
                 
                 current_offset = label_style_cfg.default_offset_override if label_style_cfg.default_offset_override is not None else config.global_label_default_offset
 
-                placement_info = get_label_placement_params(
-                    element_type='side',
-                    target_elements={'p_start': sp, 'p_end': ep},
-                    all_vertices=all_vertices_tuple,
-                    special_points={}, # TODO: Pass actual special points
-                    user_preference="auto", # TODO: Allow user_preference from config
-                    default_offset=current_offset
-                )
+                # 使用新的標籤定位API
+                label_params = position_side_label_auto(sp, ep, all_vertices_tuple, current_offset)
+                placement_info = {
+                    'reference_point': (label_params.position.x, label_params.position.y),
+                    'label_anchor': label_params.tikz_anchor,
+                    'rotation': label_params.rotation_angle
+                }
 
                 label_params_dict: Dict[str, Any] = {
                     "variant": config.variant,
                     "text": actual_text_for_label,
-                    "x": placement_info.get('reference_point', get_midpoint(sp,ep))[0], # Fallback
-                    "y": placement_info.get('reference_point', get_midpoint(sp,ep))[1],
+                    "x": placement_info.get('reference_point', midpoint(sp,ep))[0], # Fallback
+                    "y": placement_info.get('reference_point', midpoint(sp,ep))[1],
                     "anchor": placement_info.get('label_anchor'),
                     "rotate": placement_info.get('rotation')
                 }
@@ -307,13 +324,21 @@ class PredefinedTriangleGenerator(FigureGenerator):
                 if angle_config.arc_radius_config is not None \
                 else config.global_angle_arc_radius_config
 
-            arc_render_info = get_arc_render_params(
+            # 使用新的弧線渲染API
+            arc_params = arc_renderer.render_angle_arc(
                 vertex=v_angle,
-                p_on_arm1=ap1,
-                p_on_arm2=ap2,
-                radius_config=radius_to_use_for_arc,
-                is_right_angle_symbol=False # TODO: Add support for right angle symbol from config
+                point1=ap1,
+                point2=ap2,
+                radius_config=radius_to_use_for_arc
             )
+            # 轉換為舊格式以保持兼容
+            arc_render_info = {
+                'type': 'arc',
+                'center': arc_params.center,
+                'radius': arc_params.radius,
+                'start_angle_rad': arc_params.start_angle,
+                'end_angle_rad': arc_params.end_angle
+            }
 
             if angle_config.show_arc and arc_render_info and arc_render_info['type'] == 'arc':
                 arc_style_cfg = angle_config.arc_style # Guaranteed by default_factory
@@ -377,8 +402,8 @@ class PredefinedTriangleGenerator(FigureGenerator):
                 vec_v_arm1 = (ap1[0] - v_angle[0], ap1[1] - v_angle[1])
                 vec_v_arm2 = (ap2[0] - v_angle[0], ap2[1] - v_angle[1])
                 dot_prod = vec_v_arm1[0] * vec_v_arm2[0] + vec_v_arm1[1] * vec_v_arm2[1]
-                len1 = _distance(v_angle, ap1)
-                len2 = _distance(v_angle, ap2)
+                len1 = distance(v_angle, ap1)
+                len2 = distance(v_angle, ap2)
                 angle_value_rad = 0.0
                 if len1 > 1e-9 and len2 > 1e-9:
                     cos_theta = max(-1.0, min(1.0, dot_prod / (len1 * len2)))
@@ -426,18 +451,14 @@ class PredefinedTriangleGenerator(FigureGenerator):
                     actual_text_for_label = actual_text_for_label[1:-1]
 
                 current_offset = label_style_cfg.default_offset_override if label_style_cfg.default_offset_override is not None else config.global_label_default_offset
-                # For angle labels, offset might need to be relative to arc radius
-                # The get_label_placement_params for 'angle_value' uses arc_params['radius'] + default_offset
-                # So, the passed default_offset is an addition to the auto-calculated arc radius.
 
-                placement_info = get_label_placement_params(
-                    element_type='angle_value',
-                    target_elements={'vertex': v_angle, 'p_on_arm1': ap1, 'p_on_arm2': ap2},
-                    all_vertices=all_vertices_tuple,
-                    special_points={}, # TODO: Pass
-                    user_preference="auto", # TODO: Allow
-                    default_offset=current_offset
-                )
+                # 使用新的標籤定位API
+                label_params = position_angle_label_auto(v_angle, ap1, ap2, current_offset)
+                placement_info = {
+                    'reference_point': (label_params.position.x, label_params.position.y),
+                    'label_anchor': label_params.tikz_anchor,
+                    'rotation': label_params.rotation_angle
+                }
 
                 label_params_dict: Dict[str, Any] = {
                     "variant": config.variant,
@@ -479,7 +500,10 @@ class PredefinedTriangleGenerator(FigureGenerator):
         for name, sp_config, getter_func in special_point_definitions:
             if sp_config: # If display config for this special point exists
                 try:
-                    sp_coord = getter_func(p1, p2, p3)
+                    # 使用新的特殊點API
+                    triangle_obj = Triangle(Point(*p1), Point(*p2), Point(*p3))
+                    sp_point = getter_func(triangle_obj)
+                    sp_coord = (sp_point.x, sp_point.y)
                     special_points_coords_map[name] = sp_coord
 
                     if sp_config.show_point:
@@ -500,16 +524,13 @@ class PredefinedTriangleGenerator(FigureGenerator):
                         
                         current_offset = label_style_cfg.default_offset_override if label_style_cfg.default_offset_override is not None else config.global_label_default_offset
                         
-                        # Pass all calculated special points to get_label_placement_params
-                        # for context, though for a single point label, it might not use others.
-                        placement_info = get_label_placement_params(
-                            element_type='vertex', # Treat special point like a vertex for labeling
-                            target_elements={'vertex_coord': sp_coord},
-                            all_vertices=all_vertices_tuple,
-                            special_points=special_points_coords_map,
-                            user_preference="auto",
-                            default_offset=current_offset
-                        )
+                        # 使用新的標籤定位API - 特殊點當作頂點處理
+                        label_params = position_vertex_label_auto(sp_coord, all_vertices_tuple, current_offset)
+                        placement_info = {
+                            'reference_point': (label_params.position.x, label_params.position.y),
+                            'label_anchor': label_params.tikz_anchor,
+                            'rotation': label_params.rotation_angle
+                        }
 
                         label_params_dict: Dict[str, Any] = {
                             "variant": config.variant,

@@ -200,7 +200,7 @@ class QuestionGenerator(ABC):
     @classmethod
     def register(cls) -> None:
         """註冊生成器到中央系統"""
-        from utils.registry import registry
+        from utils.core.registry import registry
         
         print(f"正在註冊生成器: {cls.__name__}")
         

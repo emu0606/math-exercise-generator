@@ -120,7 +120,7 @@ class StandardUnitCircleParams(BaseFigureParams):
     point_label: str = 'P'
 
 # --- 基礎圖形參數 ---
-PointTuple = Tuple[float, float] # 與 utils.geometry_utils.Point 一致
+PointTuple = Tuple[float, float] # 與 utils.geometry.types.Point 一致
 
 class LabelParams(BaseFigureParams):
     """標籤參數模型"""
@@ -227,7 +227,7 @@ class PredefinedTriangleParams(BaseFigureParams):
     預定義三角形生成器的參數模型。
     用於定義三角形的幾何形狀以及要顯示的各種標記和樣式。
     """
-    # 1. 三角形定義 (對應 utils.geometry_utils.get_vertices 的參數)
+    # 1. 三角形定義 (對應 utils.geometry.triangle_constructions.TriangleConstructor 的參數)
     definition_mode: Literal['sss', 'sas', 'asa', 'aas', 'coordinates'] = Field(
         description="定義三角形的方式。"
     )

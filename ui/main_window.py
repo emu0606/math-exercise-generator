@@ -27,8 +27,8 @@ from ui.category_widget import CategoryWidget
 
 from ui.settings_widget import SettingsWidget
 
-from utils.pdf_generator import generate_pdf
-from utils.registry import registry
+from utils.orchestration.pdf_orchestrator import generate_pdf_with_progress
+from utils.core.registry import registry
 
 
 
@@ -350,9 +350,14 @@ class MathTestGenerator(QMainWindow):
 
         try:
 
-            generate_pdf(output_path, test_title, selected_data, rounds, questions_per_round)
-
-            QMessageBox.information(self, "生成成功", f"PDF 測驗已成功生成！\n路徑: {output_path}")
+            success = generate_pdf_with_progress(output_path, test_title, selected_data, 
+                                               rounds, questions_per_round, 
+                                               progress_callback=None, template_name="standard")
+            
+            if success:
+                QMessageBox.information(self, "生成成功", f"PDF 測驗已成功生成！\n路徑: {output_path}")
+            else:
+                QMessageBox.critical(self, "生成失敗", "PDF 生成過程中發生未知錯誤")
 
         except Exception as e:
 
