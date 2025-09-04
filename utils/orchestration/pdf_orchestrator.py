@@ -280,7 +280,7 @@ class PDFOrchestrator:
         Returns:
             包含各種 LaTeX 內容的字典
         """
-        from ..latex_generator import LaTeXGenerator
+        from ..latex.generator import LaTeXGenerator
         
         latex_generator = LaTeXGenerator()
         

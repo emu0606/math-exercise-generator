@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git branch:*)",
+      "Bash(python:*)",
+      "Bash(mv:*)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_triangle_construction.py::TestTriangleConstructor::test_sss_construction -v)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_basic_ops.py::TestBasicOperations::test_centroid_calculation -v)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/ --tb=line -q)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_basic_ops.py -x --tb=line)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_basic_ops.py::TestBasicOperations::test_triangle_area_calculation -v)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_basic_ops.py::TestBasicOperations::test_signed_area_calculation -v)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_basic_ops.py::TestBasicOperations::test_error_handling -v)",
+      "Bash(py -m pytest tests/test_utils/test_geometry/test_triangle_centers.py::TestTriangleCenterCalculator::test_incenter_calculation -v)",
+      "Bash(py:*)",
+      "Bash(set PYTHONIOENCODING=utf-8)",
+      "Bash(set PYTHONUTF8=1)",
+      "Bash(git add:*)",
+      "Bash(mkdir:*)",
+      "Bash(dir:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

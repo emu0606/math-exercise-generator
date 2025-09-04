@@ -13,7 +13,8 @@ from typing import Any # Import Any for type hinting
 
 # 假設此腳本與 utils, figures 等目錄在同一級別或 Python 路徑已配置
 from utils.geometry.types import Point
-from utils.geometry.triangle_constructions import TriangleConstructor, TriangleDefinitionError
+from utils.geometry.triangle_construction import TriangleConstructor, construct_triangle
+from utils.geometry.exceptions import TriangleDefinitionError
 from utils.geometry.basic_ops import midpoint, distance
 from utils.geometry.triangle_centers import TriangleCenterCalculator
 from utils.tikz.arc_renderer import ArcRenderer
@@ -130,7 +131,8 @@ def visualize_triangle_elements(
     fig, ax = plt.subplots()
     
     try:
-        p1, p2, p3 = get_vertices(**triangle_def)
+        triangle = construct_triangle(**triangle_def)
+        p1, p2, p3 = triangle.p1, triangle.p2, triangle.p3
     except (TriangleDefinitionError, ValueError, NotImplementedError) as e:
         print(f"無法生成三角形: {e}")
         setup_plot(ax, title=f"錯誤: {e}", all_points=[(0,0)]) # Basic plot for error
@@ -176,7 +178,7 @@ def visualize_triangle_elements(
             (p3, p1, "b")  # Side b (P3P1)
         ]
         for sp, ep, side_name_label in sides:
-            side_len = _distance(sp, ep)
+            side_len = distance(sp, ep)
             label_text = f"{side_name_label}={side_len:.2f}"
             
             label_params_input = {
