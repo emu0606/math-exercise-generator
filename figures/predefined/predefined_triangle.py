@@ -3,6 +3,41 @@
 
 """
 數學測驗生成器 - 預定義三角形生成器
+
+此模組實現了功能完整的三角形圖形生成器，支援多種三角形定義方式、
+豐富的標註選項和特殊點顯示。使用新架構的統一 API 進行幾何計算
+和 TikZ 渲染。
+
+主要特性：
+1. **多種構造方式**: SSS, SAS, ASA, AAS, 座標定義
+2. **完整標註系統**: 頂點標籤、邊標籤、角標記
+3. **特殊點支援**: 質心、內心、外心、垂心
+4. **靈活樣式控制**: 可配置的顯示和樣式選項
+5. **新架構整合**: 使用統一的幾何計算和渲染 API
+
+此生成器是新架構 API 使用的典型範例，展示了如何：
+- 使用 `from utils import` 統一導入
+- 整合幾何計算模組和 TikZ 渲染
+- 處理複雜的參數模型和驗證
+- 生成高品質的數學圖形
+
+Example:
+    生成基本 SSS 三角形::
+
+        from figures import get_figure_generator
+        
+        generator = get_figure_generator('predefined_triangle')
+        tikz_code = generator.generate_tikz({
+            'definition_mode': 'sss',
+            'side_a': 3, 'side_b': 4, 'side_c': 5,
+            'variant': 'explanation'
+        })
+
+Note:
+    - 此生成器已完全遷移到新架構 API
+    - 使用 `PredefinedTriangleParams` 進行參數驗證
+    - 支援複雜的顯示配置和樣式控制
+    - 是其他生成器遷移到新架構的參考範例
 """
 
 import math
@@ -40,9 +75,56 @@ arc_renderer = ArcRenderer()
 
 @register_figure_generator
 class PredefinedTriangleGenerator(FigureGenerator):
-    """
-    預定義三角形生成器。
-    根據詳細參數繪製三角形，包括頂點、邊標籤、角標記和特殊點。
+    """預定義三角形生成器
+    
+    高級三角形圖形生成器，支援完整的數學標註和多種構造方式。
+    此生成器展示了新架構 API 的全面應用，包括幾何計算、TikZ 渲染
+    和複雜參數處理。
+    
+    核心功能：
+    1. **靈活構造**: 支援 SSS、SAS、ASA、AAS 和座標定義方式
+    2. **豐富標註**: 自動或手動配置頂點、邊、角的標籤和標記
+    3. **特殊點計算**: 質心、內心、外心、垂心的自動計算和顯示
+    4. **樣式控制**: 細粒度的顏色、字體、定位控制
+    5. **變體支援**: question/explanation 變體的不同顯示策略
+    
+    技術特點：
+    - 使用新架構統一 API (`from utils import`)
+    - 整合 `PredefinedTriangleParams` 複雜參數模型
+    - 使用 `ArcRenderer` 和標籤定位系統
+    - 支援 TikZ 高品質數學圖形輸出
+    
+    Attributes:
+        無實例屬性，所有狀態通過參數傳遞
+        
+    Example:
+        基本使用::
+        
+            generator = PredefinedTriangleGenerator()
+            
+            # SSS 三角形（3-4-5 直角三角形）
+            params = {
+                'definition_mode': 'sss',
+                'side_a': 3, 'side_b': 4, 'side_c': 5,
+                'variant': 'question'
+            }
+            tikz_code = generator.generate_tikz(params)
+            
+        詳解變體與特殊點::
+        
+            params = {
+                'definition_mode': 'sss',
+                'side_a': 6, 'side_b': 8, 'side_c': 10,
+                'variant': 'explanation',
+                'display_centroid': {'show_point': True, 'show_label': True},
+                'display_incenter': {'show_point': True, 'show_label': True}
+            }
+            
+    Note:
+        - 此類別是新架構遷移的完整範例
+        - 參數驗證使用 Pydantic v2 模型
+        - 錯誤處理包含詳細的幾何驗證
+        - 輸出的 TikZ 代碼符合數學出版標準
     """
 
     @classmethod
@@ -56,8 +138,54 @@ class PredefinedTriangleGenerator(FigureGenerator):
         return generator_class()
 
     def generate_tikz(self, params: Dict[str, Any]) -> str:
-        """
-        生成預定義三角形的 TikZ 圖形內容。
+        """生成預定義三角形的 TikZ 圖形內容
+        
+        這是預定義三角形生成器的核心方法，負責將複雜的三角形參數
+        轉換為完整的 TikZ 圖形代碼。整合了幾何計算、標籤定位、
+        特殊點計算等多個子系統。
+        
+        處理流程：
+        1. 參數驗證（使用 PredefinedTriangleParams）
+        2. 三角形構造（使用新架構幾何 API）
+        3. 基礎三角形渲染
+        4. 頂點標籤處理
+        5. 邊標籤處理
+        6. 角標記處理
+        7. 特殊點計算和顯示
+        8. TikZ 代碼組合
+        
+        Args:
+            params (Dict[str, Any]): 三角形參數字典，必須符合 PredefinedTriangleParams 模型。
+                主要參數包括：
+                - definition_mode: 構造方式 ('sss', 'sas', 'asa', 'aas', 'coordinates')
+                - 幾何參數: 根據 definition_mode 提供對應參數
+                - 顯示配置: 頂點、邊、角的顯示和樣式選項
+                - 特殊點配置: 質心、內心等特殊點的顯示選項
+                
+        Returns:
+            str: 完整的 TikZ 圖形內容，不包含 tikzpicture 環境。
+                包含三角形輪廓、所有標籤、角標記和特殊點。
+                
+        Raises:
+            ValueError: 當參數驗證失敗時，包含詳細的 Pydantic 錯誤信息
+            TriangleDefinitionError: 當幾何參數無法構成有效三角形時
+            RuntimeError: 當 TikZ 渲染過程中發生錯誤時
+            
+        Example:
+            生成標準 3-4-5 直角三角形::
+            
+                params = {
+                    'definition_mode': 'sss',
+                    'side_a': 3, 'side_b': 4, 'side_c': 5,
+                    'variant': 'explanation'
+                }
+                tikz_code = generator.generate_tikz(params)
+                
+        Note:
+            - 使用新架構的 construct_triangle 函數進行幾何計算
+            - 自動處理標籤衝突和定位優化
+            - 支援複雜的樣式配置和顯示選項
+            - 輸出符合數學出版品質要求
         """
         try:
             config = PredefinedTriangleParams(**params)

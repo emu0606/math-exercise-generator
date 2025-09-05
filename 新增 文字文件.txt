@@ -1,0 +1,134 @@
+🎯 UI 目錄分析與 PyQt5 建議
+
+  📊 現狀分析
+
+  🔥 問題嚴重度
+
+  - category_widget.py (579行) - 🔥🔥🔥 極度臃腫
+  - main_window.py (368行) - 🔥🔥 嚴重臃腫
+  - settings_widget.py (259行) - 🔥 需要關注
+  - utils.py (28行) - ✅ 良好狀態
+
+  💡 PyQt5 重構建議
+
+  🏗️ 1. 分離關注點原則
+
+  category_widget.py (579行) 建議拆分:
+  ui/category/
+  ├── __init__.py
+  ├── category_widget.py      # 主控制邏輯 (~150行)
+  ├── category_item.py        # 單個分類項目 (~100行)
+  ├── subcategory_list.py     # 子分類列表 (~100行)
+  ├── category_controls.py    # 控制按鈕 (~80行)
+  └── category_models.py      # 數據模型 (~50行)
+
+  main_window.py (368行) 建議拆分:
+  ui/main/
+  ├── __init__.py
+  ├── main_window.py          # 窗口框架 (~150行)
+  ├── menu_manager.py         # 菜單管理 (~80行)
+  ├── layout_manager.py       # 佈局管理 (~70行)  
+  └── event_handlers.py       # 事件處理 (~60行)
+
+  🎨 2. PyQt5 最佳實踐
+
+  Signal/Slot 模式
+
+  # ✅ 好的做法
+  class CategoryWidget(QWidget):
+      # 自定義信號
+      categoryChanged = pyqtSignal()
+      selectionUpdated = pyqtSignal(dict)
+
+      def __init__(self):
+          super().__init__()
+          # 連接信號
+          self.categoryChanged.connect(self.on_category_changed)
+
+  資源管理
+
+  # ✅ UI 資源集中管理
+  class UIResources:
+      """UI 資源管理器"""
+
+      @staticmethod
+      def get_icon(name: str) -> QIcon:
+          """獲取圖示"""
+
+      @staticmethod
+      def get_stylesheet(name: str) -> str:
+          """獲取樣式表"""
+
+  🚀 現代化策略
+
+  Phase 1: 文檔優先 (推薦從這裡開始)
+
+  class CategoryWidget(QWidget):
+      """數學題目類別選擇元件
+
+      提供階層式的類別和子類別選擇界面，支援展開/收合、
+      批次選擇、數量配置等功能。
+
+      Signals:
+          categoryChanged(): 類別選擇發生變更時發出
+          selectionUpdated(dict): 選擇狀態更新時發出，包含選中項目
+
+      Attributes:
+          category_widgets (List): 主類別元件列表
+          subcategory_widgets (List): 子類別元件列表
+
+      Example:
+          >>> widget = CategoryWidget()
+          >>> widget.categoryChanged.connect(self.handle_category_change)
+          >>> widget.populate_categories(categories_data)
+
+      Note:
+          此元件依賴外部的 categories.json 配置文件，
+          需要確保數據格式正確。
+      """
+
+  Phase 2: 漸進式重構
+
+  不要一次性重構所有文件！建議順序：
+  1. utils.py - 已經很好，只需要添加 Sphinx docstring
+  2. settings_widget.py - 中等大小，較容易處理
+  3. main_window.py - 核心窗口，需要小心處理
+  4. category_widget.py - 最複雜，留到最後
+
+  📋 具體行動計畫
+
+  選項 A: 僅文檔化 (推薦 - 符合當前階段)
+
+  ### UI Phase: 僅 Sphinx 文檔標準化 (2天)
+
+  Day 1: 小文件處理
+  - ✅ ui/__init__.py - 添加模組 docstring
+  - ✅ ui/utils.py - 驗證並完善現有 docstring
+  - 🔥 ui/settings_widget.py - 標準化類別和方法 docstring
+
+  Day 2: 大文件處理  
+  - 🔥🔥 ui/main_window.py - 重點處理主類別和關鍵方法
+  - 🔥🔥🔥 ui/category_widget.py - 分段添加 docstring，不重構
+
+  選項 B: 文檔 + 輕度重構 (適合有時間時)
+
+  - 將最大的方法提取成私有方法
+  - 添加型別提示
+  - 改善變數命名
+
+  🎯 我的建議
+
+  對於你的情況 (PyQt5 新手 + 時間限制)：
+
+  ✅ 採用選項 A - 僅文檔化
+  - 風險低，不會破壞現有功能
+  - 學習 PyQt5 結構的好機會
+  - 為將來的重構奠定基礎
+
+  ❌ 避免大規模重構
+  - PyQt5 GUI 重構風險極高
+  - 需要深入理解信號槽機制
+  - 可能影響使用者體驗
+
+● 你覺得這個分析如何？我建議先從文檔化開始，讓你在添加 docstring
+  的過程中逐漸熟悉 PyQt5 的結構和邏輯！
