@@ -1,8 +1,8 @@
 # Claude Code 開發指南
 
 > **專案**: 數學測驗生成器現代化  
-> **最後更新**: 2025-09-06 (Day 2 重構完成)  
-> **當前階段**: params_models 重構 Day 2/4 ✅
+> **最後更新**: 2025-09-07 (Phase 4 開始)  
+> **當前階段**: Phase 4 Generators 現代化 🚀
 
 ## 🏗️ **專案架構概覽**
 
@@ -16,7 +16,7 @@
   - `algebra/` - 代數題目生成器
   - `trigonometry/` - 三角函數生成器  
   - `arithmetic/` - 算術生成器
-  - **狀態**: 📋 需要現代化 (見 `docs/generators_improvement_plan.md`)
+  - **狀態**: 🚀 Phase 4 進行中 (基礎框架完成 ✅)
 
 - **`utils/`** - 核心工具函數
   - `geometry/` - 幾何計算
@@ -26,44 +26,94 @@
 - **`tests/`** - 測試套件  
 - **`docs/`** - 技術文檔
 
-## 🎯 **當前重構狀態**
+## 🎯 **當前現代化狀態**
 
-### **✅ 已完成 - params_models 重構**
+### **✅ 已完成階段**
 ```
-Day 1 ✅: 基礎架構 (types, base, __init__)
-Day 2 ✅: 幾何參數 + 樣式系統 (geometry, shapes, composite, styles)
+✅ params_models 重構完成 (Day 1-4)
+✅ Phase 1-3: figures/ 目錄現代化完成
+✅ Phase 4.1: generators 基礎框架現代化完成
 ```
 
-**成就**:
-- 562 行巨型文件 → 10+ 模組化文件
-- 100% 向後兼容性維持  
-- 完整 Sphinx docstring 覆蓋
-- 新舊模組並存測試通過
+### **🚀 進行中 - Phase 4: Generators 現代化**
+**當前重點**: 完全重建 generators 系統，**不考慮向後兼容性**
 
-### **🔄 進行中 - Day 3 目標**
-- 處理 162 行 `PredefinedTriangleParams` 怪物
-- 建立 `figures/params/triangle/` 專用模組
-- 完成最後的參數模型隔離
+#### **新架構核心思維**
+- **🔥 推倒重建**: 完全拋棄舊架構束縛
+- **⚡ 新架構優先**: 充分發揮新工具優勢  
+- **🏆 品質至上**: 建立新架構的典範案例
+- **🚫 零技術債務**: 不被舊 API 和設計限制
 
-### **📋 計劃中**
-- Day 4: Sphinx 文檔完善 + 最終驗證
-- 後續: generators 系統現代化 (參考改進計畫)
+#### **Phase 4 成果**
+- [x] **generators/base.py** - 完全重建基礎生成器類別 ✅
+- [x] **generators/__init__.py** - 新架構註冊系統建立 ✅
+- [ ] **generators/algebra/** - 代數生成器完全重建 (進行中)
+- [ ] **generators/arithmetic/** - 算術生成器重建
+- [ ] **其他數學領域** - 三角函數等生成器重建
+
+### **📋 新架構重建原則**
+1. **完全應用新工具**: `from utils import Point, global_config, get_logger`
+2. **Pydantic 參數驗證**: 充分利用型別安全和資料驗證
+3. **完整 Sphinx 文檔**: Google Style 標準，包含數學概念準確性
+4. **性能優化**: 利用新架構的效能優勢
+5. **設計自由度**: 不受舊 API 束縛，設計最佳接口
+
+### **⚡ 新架構專注執行策略**
+
+#### **🎯 核心策略**
+- **推倒重建思維**: 完全摒棄舊系統束縛，以新架構最佳實踐為準
+- **品質典範建設**: 讓每個重建的生成器成為新架構應用典範
+- **技術債務零容忍**: 不繼承任何舊架構的設計問題
+- **充分工具應用**: 最大化利用新架構提供的所有優勢工具
+
+#### **🚨 新架構風險管理**
+**高優先級風險**:
+- **數學邏輯正確性**: 重建時確保數學計算邏輯完全正確
+- **新架構整合**: 充分發揮新架構工具的整合優勢
+
+**轉為機會項目**:
+- **全新 API 設計**: 設計完全符合新架構理念的最佳 API
+- **典範案例建設**: 建立新架構在複雜數學應用中的標準範例
+
+#### **🛡️ 簡化應急策略**
+遇到困難時的解決思路：
+1. **深入理解新架構** - 可能是尚未充分發揮新工具優勢
+2. **重新設計而非修補** - 既然推倒重建，就徹底重新設計  
+3. **新架構最佳解決方案** - 不被舊思維和舊實作限制
 
 ## 🔧 **開發最佳實踐**
 
-### **測試命令**
+### **新架構測試命令**
 ```bash
-# 新模組功能測試
-py -c "from figures.params import PointParams, CircleParams; print('✅ 新模組正常')"
+# 新架構模組功能測試
+py -c "from figures.params import PointParams, CircleParams; print('✅ 新架構模組正常')"
 
-# 向後兼容性測試  
-py -c "from figures.params_models import UnitCircleParams; print('✅ 舊模組兼容')"
+# 新架構生成器測試
+py -c "from generators import QuestionGenerator, QuestionSize; print('✅ 新架構生成器正常')"
 
-# 幾何工具測試
+# 完整的新架構工具測試
+py -c "from utils import Point, global_config, get_logger; print('✅ 新架構工具集正常')"
+
+# 幾何計算新架構測試
 py -m pytest tests/test_utils/test_geometry/ -v
 
 # 完整測試套件
 py -m pytest tests/ --tb=line -q
+
+# 新重建模組的功能驗證
+py -c "from generators.base import QuestionGenerator; print('✅ 重建基礎類別正常')"
+```
+
+### **新架構驗證重點**
+```bash
+# 驗證新架構整合是否成功
+py -c "
+from generators.base import QuestionGenerator
+from utils import get_logger
+logger = get_logger('test')
+logger.info('新架構整合測試成功')
+print('✅ 新架構整合正常')
+"
 ```
 
 ### **Git 工作流程**
@@ -173,4 +223,18 @@ pip install -r requirements.txt
 
 ---
 
-**提醒**: 此專案正在進行大規模重構，建議在進行新功能開發前先完成 params_models 重構 (Day 3-4)。
+## 🚀 **新架構重建宣言**
+
+**此專案採取完全重建策略**，目標是建立現代化、高品質的數學測驗生成系統：
+
+### **✨ 重建優勢**
+- **🔥 零技術債務**: 完全摒棄舊架構的設計問題
+- **⚡ 新工具充分應用**: 最大化利用新架構的所有優勢  
+- **🏆 品質典範**: 每個模組都是新架構應用的最佳範例
+- **📚 完整文檔**: 所有模組都有完整的 Sphinx 標準化文檔
+- **🧪 徹底測試**: 新架構下的完整功能驗證
+
+### **🎯 當前重點**
+**Phase 4: Generators 完全重建** - 不考慮向後兼容，專注於建立新架構的典範應用
+
+**核心思維**: **推倒重建 > 修補維護**，**新架構優勢 > 舊系統包袱**

@@ -75,7 +75,6 @@ from .geometry import (
 from .shapes import (
     StandardUnitCircleParams,
     CoordinateSystemParams,
-    BasicTriangleParams,
     LabelParams,
     GridParams
 )
@@ -88,11 +87,22 @@ from .composite import (
     GroupParams
 )
 
+# 三角形模組 (新增)
+from .triangle import (
+    BasicTriangleParams,
+    TriangleParams as DetailedTriangleParams,  # 避免與 geometry 的 TriangleParams 衝突
+    PredefinedTriangleParams,
+    LabelStyleConfig,
+    PointStyleConfig,
+    VertexDisplayConfig,
+    SideDisplayConfig,
+    ArcStyleConfig,
+    AngleDisplayConfig,
+    SpecialPointDisplayConfig
+)
+
 # 樣式配置（可選導入）
 from .styles import (
-    LabelStyleConfig,
-    VertexDisplayConfig,
-    ArcStyleConfig,
     FillStyleConfig,
     ColorSchemeConfig
 )
@@ -121,7 +131,6 @@ __all__ = [
     # 標準形狀參數
     'StandardUnitCircleParams',
     'CoordinateSystemParams',
-    'BasicTriangleParams',
     'LabelParams',
     'GridParams',
     
@@ -130,6 +139,15 @@ __all__ = [
     'CompositeParams',
     'LayoutParams',
     'GroupParams',
+    
+    # 三角形模組 (Day 3 新增)
+    'BasicTriangleParams',
+    'DetailedTriangleParams',
+    'PredefinedTriangleParams',
+    'PointStyleConfig',
+    'SideDisplayConfig',
+    'AngleDisplayConfig',
+    'SpecialPointDisplayConfig',
     
     # 樣式配置
     'LabelStyleConfig',
@@ -145,8 +163,9 @@ __author__ = 'Math Exercise Generator Team'
 __description__ = 'Modular parameter models for mathematical figure generation'
 
 # 重構完成狀態
-__refactoring_status__ = 'Day 2 Complete'
+__refactoring_status__ = 'Day 3 Complete'
 __modules_ready__ = [
     'types', 'base', 'geometry', 'shapes', 
-    'composite', 'styles.labels', 'styles.display'
+    'composite', 'styles.labels', 'styles.display',
+    'triangle.basic', 'triangle.advanced'  # Day 3 新增
 ]

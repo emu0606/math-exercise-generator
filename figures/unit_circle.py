@@ -52,12 +52,14 @@ class UnitCircleGenerator(FigureGenerator):
         radius = validated_params.radius
         variant = validated_params.variant
         
-        # 計算角度（弧度）
+        # 使用新架構的幾何計算功能
         angle_rad = math.radians(angle)
         
-        # 計算點的坐標
+        # 計算圓上點的座標，使用 Point 類型
         cos_value = radius * math.cos(angle_rad)
         sin_value = radius * math.sin(angle_rad)
+        point_on_circle = Point(cos_value, sin_value)
+        origin = Point(0, 0)
         
         # 確定點標籤的位置
         label_position = self._get_label_position(angle)
@@ -77,13 +79,13 @@ class UnitCircleGenerator(FigureGenerator):
         tikz_content += f"\\draw[{line_color}] (0,0) circle ({radius});\n"
         
         # 原點
-        tikz_content += f"\\fill (0,0) circle (0.03) node[below left] {{$O$}};\n"
+        tikz_content += f"\\fill {origin.to_tikz()} circle (0.03) node[below left] {{$O$}};\n"
         
         # 點 P
-        tikz_content += f"\\fill[{point_color}] ({cos_value},{sin_value}) circle (0.03) node[{label_position}] {{$P$}};\n"
+        tikz_content += f"\\fill[{point_color}] {point_on_circle.to_tikz()} circle (0.03) node[{label_position}] {{$P$}};\n"
         
-        # 半徑線段
-        tikz_content += f"\\draw[thick,{point_color}] (0,0) -- ({cos_value},{sin_value});\n"
+        # 半徑線段（使用 Point 類型的座標）
+        tikz_content += f"\\draw[thick,{point_color}] {origin.to_tikz()} -- {point_on_circle.to_tikz()};\n"
         
         # 角度弧
         tikz_content += f"\\draw[{angle_color},->] (0.3,0) arc (0:{angle}:0.3) node[midway,{angle_label_position}] {{${angle}^\\circ$}};\n"
@@ -103,12 +105,19 @@ class UnitCircleGenerator(FigureGenerator):
                 cos_latex = f"{exact_cos:.4f}"
                 sin_latex = f"{exact_sin:.4f}"
             
+            # 使用 Point 類型的座標表示
+            coord_label_point = Point(cos_value, sin_value - 0.2)
+            x_projection = Point(cos_value, 0)
+            y_projection = Point(0, sin_value)
+            
             # 添加坐標標籤
-            tikz_content += f"\\node[below] at ({cos_value},{sin_value-0.2}) {{$({cos_latex},{sin_latex})$}};\n"
+            tikz_content += f"\\node[below] at {coord_label_point.to_tikz()} {{$({cos_latex},{sin_latex})$}};\n"
             
             # 添加 x 和 y 投影線
-            tikz_content += f"\\draw[dashed,gray] ({cos_value},{sin_value}) -- ({cos_value},0) node[below] {{${cos_latex}$}};\n"
-            tikz_content += f"\\draw[dashed,gray] ({cos_value},{sin_value}) -- (0,{sin_value}) node[left] {{${sin_latex}$}};\n"
+            tikz_content += f"\\draw[dashed,gray] {point_on_circle.to_tikz()} -- {x_projection.to_tikz()} node[below] {{${cos_latex}$}};\n"
+            tikz_content += f"\\draw[dashed,gray] {point_on_circle.to_tikz()} -- {y_projection.to_tikz()} node[left] {{${sin_latex}$}};\n"
+        
+        logger.debug(f"生成單位圓 TikZ 代碼: 角度{angle}°, 點{point_on_circle.to_tikz()}")
         
         return tikz_content
     
@@ -158,4 +167,6 @@ class UnitCircleGenerator(FigureGenerator):
             360: ("1", "0")
         }
         
-        return special_values.get(angle, (f"{math.cos(math.radians(angle)):.4f}", f"{math.sin(math.radians(angle)):.4f}"))
+        result = special_values.get(angle, (f"{math.cos(math.radians(angle)):.4f}", f"{math.sin(math.radians(angle)):.4f}"))
+        logger.debug(f"獲取角度 {angle}° 的三角函數值: cos={result[0]}, sin={result[1]}")
+        return result

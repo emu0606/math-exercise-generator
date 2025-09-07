@@ -136,11 +136,12 @@ class StandardUnitCircleGenerator(FigureGenerator):
         
         # 4. 添加點 P（如果需要）
         if show_point:
-            # 計算點的坐標
+            # 使用新架構的 sympy 計算幾何座標
             angle_rad = sympy.rad(angle)
-            # 使用 N() 進行數值評估以獲得坐標值
+            # 使用 sympy.N() 進行數值評估以獲得精確座標值
             cos_value = radius * sympy.N(sympy.cos(angle_rad))
             sin_value = radius * sympy.N(sympy.sin(angle_rad))
+            point_on_circle = Point(float(cos_value), float(sin_value))
             
             # 確定點標籤的位置
             label_position = self._get_label_position(angle)
@@ -150,8 +151,8 @@ class StandardUnitCircleGenerator(FigureGenerator):
                     id="point",
                     type="point",
                     params={
-                        "x": cos_value,
-                        "y": sin_value,
+                        "x": float(cos_value),
+                        "y": float(sin_value),
                         "label": point_label if label_point else None,
                         "label_position": label_position,
                         "color": point_color,
@@ -170,8 +171,8 @@ class StandardUnitCircleGenerator(FigureGenerator):
                         params={
                             "x1": 0,
                             "y1": 0,
-                            "x2": cos_value,
-                            "y2": sin_value,
+                            "x2": float(cos_value),
+                            "y2": float(sin_value),
                             "color": radius_color,
                             "style": "thick",
                             "variant": variant
@@ -205,14 +206,16 @@ class StandardUnitCircleGenerator(FigureGenerator):
         
         # 7. 如果是詳解變體，添加更多信息
         if variant == 'explanation':
-            # 計算 cos 和 sin 值
+            # 使用新架構的 sympy 計算三角函數值
             angle_rad = sympy.rad(angle)
             # 使用 sympy 計算符號表達式
             cos_expr = sympy.cos(angle_rad)
             sin_expr = sympy.sin(angle_rad)
-            # 計算數值坐標 (使用 N() 進行數值評估)
+            # 計算數值坐標 (使用 sympy.N() 進行數值評估)
             cos_value = radius * sympy.N(cos_expr)
             sin_value = radius * sympy.N(sin_expr)
+            # 使用 Point 類型記錄座標
+            explanation_point = Point(float(cos_value), float(sin_value))
 
             # 格式化為 LaTeX (統一由 _get_exact_trig_values 處理)
             cos_latex, sin_latex = self._get_exact_trig_values(angle)
@@ -235,8 +238,8 @@ class StandardUnitCircleGenerator(FigureGenerator):
                         id="coord_label",
                         type="label",
                         params={
-                            "x": cos_value + offset_x,  # 水平偏移
-                            "y": sin_value,             # 保持與點 P 相同的垂直位置
+                            "x": float(cos_value + offset_x),  # 水平偏移
+                            "y": float(sin_value),             # 保持與點 P 相同的垂直位置
                             "text": f"({cos_latex},{sin_latex})",
                             "position": coord_position,
                             "variant": variant
@@ -382,4 +385,6 @@ class StandardUnitCircleGenerator(FigureGenerator):
             cos_latex = f"{cos_val}"
             sin_latex = f"{sin_val}"
 
-        return cos_latex, sin_latex
+        result = (cos_latex, sin_latex)
+        logger.debug(f"獲取角度 {angle}° 的三角函數 LaTeX 值: cos={cos_latex}, sin={sin_latex}")
+        return result
