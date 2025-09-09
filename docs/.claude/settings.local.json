@@ -4,7 +4,9 @@
       "Read(//d/programing/math/utils/orchestration/**)",
       "Read(//d/programing/math/utils/core/**)",
       "Read(//d/programing/math/ui/**)",
-      "Read(//d/programing/math/**)"
+      "Read(//d/programing/math/**)",
+      "Bash(py:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

@@ -316,15 +316,16 @@ class PDFOrchestrator:
             編譯結果字典
         """
         import time
-        from ..pdf_compiler import PDFCompiler
+        import os
+        import subprocess
+        from pathlib import Path
         
-        pdf_compiler = PDFCompiler()
         generated_files = []
         start_time = time.time()
         
         # 編譯題目 PDF
         if output_config.generate_questions and 'questions' in latex_contents:
-            success = pdf_compiler.compile_tex_to_pdf(
+            success = self._simple_compile_tex_to_pdf(
                 latex_contents['questions'], 
                 output_config.output_dir, 
                 f"{output_config.filename_prefix}_question"
@@ -334,7 +335,7 @@ class PDFOrchestrator:
         
         # 編譯答案 PDF
         if output_config.generate_answers and 'answers' in latex_contents:
-            success = pdf_compiler.compile_tex_to_pdf(
+            success = self._simple_compile_tex_to_pdf(
                 latex_contents['answers'], 
                 output_config.output_dir, 
                 f"{output_config.filename_prefix}_answer"
@@ -344,7 +345,7 @@ class PDFOrchestrator:
         
         # 編譯詳解 PDF
         if output_config.generate_explanations and 'explanations' in latex_contents:
-            success = pdf_compiler.compile_tex_to_pdf(
+            success = self._simple_compile_tex_to_pdf(
                 latex_contents['explanations'], 
                 output_config.output_dir, 
                 f"{output_config.filename_prefix}_explanation"
@@ -358,6 +359,66 @@ class PDFOrchestrator:
             'files': generated_files,
             'total_time': total_time
         }
+
+    def _simple_compile_tex_to_pdf(self, tex_content: str, output_dir: str, filename: str) -> bool:
+        """簡化的LaTeX編譯器 - 基於成功經驗的穩定實現
+        
+        Args:
+            tex_content: 完整的LaTeX文檔內容
+            output_dir: 輸出目錄路徑
+            filename: 文件名（不含副檔名）
+            
+        Returns:
+            編譯是否成功
+        """
+        try:
+            # 1. 確保輸出目錄存在
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # 2. 寫入.tex文件到輸出目錄
+            tex_path = os.path.join(output_dir, f"{filename}.tex")
+            with open(tex_path, 'w', encoding='utf-8') as f:
+                f.write(tex_content)
+                
+            print(f"LaTeX文件已寫入: {tex_path}")
+            
+            # 3. 在輸出目錄執行編譯 (關鍵：在同一目錄操作)
+            import subprocess
+            compile_result = subprocess.run([
+                'xelatex', 
+                '-interaction=nonstopmode',
+                f'{filename}.tex'
+            ], 
+            cwd=output_dir,  # 在目標目錄執行
+            capture_output=True, 
+            text=True,
+            timeout=60
+            )
+            
+            # 4. 檢查PDF是否成功生成
+            pdf_path = os.path.join(output_dir, f"{filename}.pdf")
+            success = os.path.exists(pdf_path)
+            
+            if success:
+                print(f"PDF編譯成功: {pdf_path}")
+            else:
+                print(f"PDF編譯失敗: {filename}")
+                if compile_result.stdout:
+                    print(f"編譯輸出: {compile_result.stdout[:500]}...")  # 限制輸出長度
+                if compile_result.stderr:
+                    print(f"編譯錯誤: {compile_result.stderr[:500]}...")
+            
+            # 5. 保留.tex文件供檢視 (不清理)
+            print(f"LaTeX文件已保留: {tex_path}")
+            
+            return success
+            
+        except subprocess.TimeoutExpired:
+            print(f"編譯超時: {filename}")
+            return False
+        except Exception as e:
+            print(f"編譯過程異常: {filename}, 錯誤: {e}")
+            return False
 
 
 # 便利函數 - 向後相容接口

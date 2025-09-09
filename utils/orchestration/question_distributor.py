@@ -106,45 +106,37 @@ class QuestionGenerator:
             
             logger.debug(f"生成 {topic} 題型，數量: {count}")
             
-            # 解析題型格式 (UI格式為 "category - subcategory")
-            if ' - ' in topic:
-                category, subcategory = topic.split(' - ', 1)
+            # 解析題型格式 (UI格式為 "category/subcategory")
+            if '/' in topic:
+                category, subcategory = topic.split('/', 1)
             else:
-                # 如果topic格式不包含' - ', 嘗試從registry中查找
-                logger.warning(f"題型格式可能不正確: {topic}")
-                # 暫時跳過檢查，直接嘗試獲取
-                category, subcategory = None, None
+                logger.error(f"題型格式不正確: {topic}，期望格式為 'category/subcategory'")
+                raise ValueError(f"題型格式不正確: {topic}")
             
             # 檢查題型是否已註冊
-            if category and subcategory:
-                if not registry.has_generator(category, subcategory):
-                    logger.error(f"題型 {topic} ({category}/{subcategory}) 未註冊")
-                    raise ValueError(f"未知的題型: {topic}")
-                
-                # 生成該題型的題目
-                generator = registry.get_generator(category, subcategory)
-            else:
-                # 降級處理：嘗試從所有生成器中查找匹配的
-                all_generators = registry.get_all_generators()
-                generator = None
-                for (cat, subcat), gen_class in all_generators.items():
-                    if topic == cat or topic == subcat or topic == f"{cat}/{subcat}":
-                        generator = gen_class
-                        break
-                
-                if generator is None:
-                    logger.error(f"無法找到題型生成器: {topic}")
-                    raise ValueError(f"未知的題型: {topic}")
+            if not registry.has_generator(category, subcategory):
+                logger.error(f"題型 {topic} ({category}/{subcategory}) 未註冊")
+                raise ValueError(f"未知的題型: {topic}")
+            
+            # 生成該題型的題目
+            generator = registry.get_generator(category, subcategory)
             
             for i in range(count):
                 try:
-                    # 這裡應該調用具體的題目生成邏輯
-                    # 暫時使用簡單的結構，後續可以擴展
+                    # 實際調用生成器生成題目
+                    generator_instance = generator()  # 實例化生成器
+                    question_result = generator_instance.generate_question()  # 調用生成方法
+                    
+                    # 構建完整的題目數據結構
                     question_data = {
                         'topic': topic,
-                        'index': i,
-                        'generator': generator,
-                        'params': self._generate_question_params(topic, i)
+                        'question': question_result.get('question', ''),
+                        'answer': question_result.get('answer', ''),
+                        'explanation': question_result.get('explanation', ''),
+                        'figure_data_question': question_result.get('figure_data_question'),
+                        'figure_data_explanation': question_result.get('figure_data_explanation'),
+                        'size': question_result.get('size', 1),
+                        'difficulty': question_result.get('difficulty', 'MEDIUM')
                     }
                     all_questions.append(question_data)
                     
@@ -422,8 +414,8 @@ class QuestionSorter:
         return shuffled
 
 
-class QuestionDistributor:
-    """題目分配器（統一介面）
+class QuestionOrchestrator:
+    """題目協調器（統一介面）
     
     整合題目生成、分配和排序功能的統一介面。
     """

@@ -572,7 +572,7 @@ class CategoryWidget(QWidget):
                 selected_count += 1
                 total_questions += sub_spin.value()
                 
-                topic_name = f"{parent_cb.text()} - {sub_cb.text()}"
+                topic_name = f"{parent_cb.text()}/{sub_cb.text()}"
                 count = sub_spin.value()
                 selected_data.append({"topic": topic_name, "count": count})
                 
