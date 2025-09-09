@@ -2,7 +2,7 @@
 
 本文檔提供了如何在新模組化架構下為數學測驗生成器開發新的圖形生成器的詳細指引。
 
-> 🆕 **新架構說明**：本指南已更新為適用於 6 層模組化架構。舊版單一檔案架構請參考歷史文檔。
+> 🆕 **Phase 4 更新**：本指南已根據 **Phase 4 Generators 現代化完成** 的經驗更新，整合 Pydantic 參數驗證最佳實踐和新架構工具使用。
 
 ## 🏗️ 新架構概述
 
@@ -100,7 +100,7 @@ class MyFigureGenerator:
 """
 
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel, Field, validator
 
 # 導入新架構的統一 API
 from utils import (
@@ -113,11 +113,11 @@ from utils.rendering import FigureRenderer
 # 模組日誌器
 logger = get_logger(__name__)
 
-@dataclass
-class MyFigureParams:
-    """我的圖形參數數據類別
+class MyFigureParams(BaseModel):
+    """我的圖形參數 Pydantic 模型
     
-    定義生成圖形所需的所有參數，包含驗證邏輯。
+    使用 Phase 4 標準的 Pydantic 進行參數驗證，提供強大的類型檢查和自動驗證。
+    參考 Phase 4 中 TrigonometricFunctionGeneratorRadius 的參數驗證最佳實踐。
     
     Attributes:
         side_a (float): 三角形邊長 a
@@ -128,28 +128,53 @@ class MyFigureParams:
         
     Example:
         >>> params = MyFigureParams(side_a=3, side_b=4, side_c=5)
-        >>> params.validate()
+        >>> params.side_a
+        3.0
+        >>> params = MyFigureParams(side_a=-1, side_b=4, side_c=5)  # 會觸發驗證錯誤
     """
-    side_a: float = 3.0
-    side_b: float = 4.0
-    side_c: float = 5.0
-    show_centroid: bool = False
-    variant: str = "question"
+    side_a: float = Field(
+        default=3.0,
+        gt=0,
+        le=100.0,
+        description="三角形邊長 a，必須大於 0"
+    )
+    side_b: float = Field(
+        default=4.0, 
+        gt=0,
+        le=100.0,
+        description="三角形邊長 b，必須大於 0"
+    )
+    side_c: float = Field(
+        default=5.0,
+        gt=0, 
+        le=100.0,
+        description="三角形邊長 c，必須大於 0"
+    )
+    show_centroid: bool = Field(
+        default=False,
+        description="是否顯示質心"
+    )
+    variant: str = Field(
+        default="question",
+        description="圖形變體類型"
+    )
     
-    def validate(self) -> None:
-        """驗證參數有效性
-        
-        Raises:
-            ValueError: 如果參數無效
-        """
-        if self.side_a <= 0 or self.side_b <= 0 or self.side_c <= 0:
-            raise ValueError("所有邊長必須大於 0")
-        
-        # 檢查三角形不等式
-        if (self.side_a + self.side_b <= self.side_c or
-            self.side_a + self.side_c <= self.side_b or
-            self.side_b + self.side_c <= self.side_a):
-            raise ValueError("邊長不符合三角形不等式")
+    @validator('variant')
+    def validate_variant(cls, v):
+        """驗證變體類型"""
+        valid_variants = ['question', 'explanation']
+        if v not in valid_variants:
+            raise ValueError(f"variant 必須是 {valid_variants} 中的一個")
+        return v
+    
+    @validator('side_c')
+    def validate_triangle_inequality(cls, v, values):
+        """驗證三角形不等式"""
+        if 'side_a' in values and 'side_b' in values:
+            a, b, c = values['side_a'], values['side_b'], v
+            if not (a + b > c and a + c > b and b + c > a):
+                raise ValueError(f"邊長 ({a}, {b}, {c}) 不符合三角形不等式")
+        return v
 
 class MyFigureGenerator:
     """我的新圖形生成器
@@ -175,13 +200,21 @@ class MyFigureGenerator:
     """
     
     def __init__(self):
-        """初始化生成器
+        """初始化生成器 (Phase 4 標準)
         
-        設置渲染器和日誌，從全域配置獲取設定。
+        使用新架構核心工具進行初始化，參考 Phase 4 最佳實踐。
         """
         self.name = "my_triangle_figure"
-        self.renderer = FigureRenderer()
-        logger.info(f"{self.name} 生成器初始化完成")
+        
+        # Phase 4: 新架構日誌系統
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
+        self.logger.info(f"{self.name} 圖形生成器初始化完成")
+        
+        # Phase 4: 新架構配置系統整合
+        self.precision = global_config.get('geometry.precision', 6)
+        self.backend = global_config.get('geometry.backend', 'python')
+        
+        self.logger.debug(f"使用數學後端：{self.backend}，精度：{self.precision}")
     
     @classmethod
     def get_name(cls) -> str:
@@ -219,11 +252,10 @@ class MyFigureGenerator:
             >>> '\\draw' in tikz
             True
         """
-        logger.debug(f"開始生成圖形，參數: {params}")
+        self.logger.debug(f"開始生成圖形，參數：{params}")
         
-        # 創建並驗證參數
+        # Phase 4: 使用 Pydantic 模型進行參數驗證
         figure_params = MyFigureParams(**params)
-        figure_params.validate()
         
         try:
             # 使用統一幾何 API 構造三角形
@@ -262,11 +294,11 @@ class MyFigureGenerator:
                 )
             
             result = "\n".join(tikz_lines)
-            logger.info(f"圖形生成成功，代碼長度: {len(result)}")
+            self.logger.info(f"圖形生成成功，代碼長度：{len(result)}")
             return result
             
         except Exception as e:
-            logger.error(f"圖形生成失敗: {e}")
+            self.logger.error(f"圖形生成失敗：{e}")
             raise
     
     def get_supported_variants(self) -> List[str]:
@@ -314,39 +346,48 @@ class MyFigureGenerator:
             }
         }
 
-# 自動註冊生成器
-registry.register_generator(MyFigureGenerator)
+# Phase 4: 圖形生成器使用不同的註冊系統
+# 圖形生成器使用 @register_figure_generator 裝飾器
+# (與 QuestionGenerator 的 @register_generator 不同)
 
-logger.debug(f"已註冊生成器: {MyFigureGenerator.get_name()}")
+logger.debug(f"圖形生成器定義完成：{MyFigureGenerator.get_name()}")
 ```
 
-### 3. 註冊系統整合
+### 3. Phase 4 圖形生成器註冊系統
 
-新架構使用自動註冊系統，生成器會在模組載入時自動註冊：
+圖形生成器有其獨立的註冊系統，與題目生成器不同：
 
 ```python
-# generators/__init__.py 中的自動導入
-"""
-生成器模組統一入口
+# 圖形生成器的註冊方式 (與題目生成器不同)
+from figures import register_figure_generator
 
-自動導入所有生成器模組，觸發註冊系統。
-"""
+@register_figure_generator
+class MyFigureGenerator:
+    """圖形生成器使用專門的註冊裝飾器"""
+    
+    @classmethod
+    def get_name(cls) -> str:
+        return "my_triangle_figure"
+    
+    def generate_tikz(self, params: Dict[str, Any]) -> str:
+        # Phase 4: 使用 Pydantic 參數驗證
+        validated_params = MyFigureParams(**params)
+        # 圖形生成邏輯...
+        return tikz_code
 
-from utils.core.logging import get_logger
-
-logger = get_logger(__name__)
-
-# 自動導入所有生成器（觸發註冊）
-try:
-    from . import my_new_generator  # 你的新生成器
-    logger.info("生成器模組載入完成")
-except ImportError as e:
-    logger.warning(f"部分生成器載入失敗: {e}")
-
-# 驗證註冊狀態
-from utils.core.registry import registry
-logger.info(f"已註冊生成器數量: {len(registry.get_all_generators())}")
+# 在 figures/__init__.py 中導入
+from .my_new_figure import MyFigureGenerator
 ```
+
+### Phase 4 圖形系統與題目系統的差異
+
+| 特徵 | 題目生成器 | 圖形生成器 |
+|------|-----------|-----------|
+| **基類** | QuestionGenerator | 無特定基類 |  
+| **註冊裝飾器** | @register_generator | @register_figure_generator |
+| **主要方法** | generate_question() | generate_tikz() |
+| **參數驗證** | Pydantic 模型 | Pydantic 模型 |
+| **註冊系統** | 統一註冊系統 | 圖形專用註冊系統 |
 
 ## 🎯 新架構整合模式
 
@@ -732,12 +773,78 @@ if __name__ == "__main__":
 
 完成開發後執行：
 ```bash
-# 檢查文檔生成
-make html -C docs
+# Phase 4 驗證命令
 
-# 執行測試
-pytest tests/ -v
+# 1. 檢查圖形生成器註冊
+py -c "from figures import get_figure_generator; print('✅ 圖形生成器註冊系統正常')"
 
-# 檢查註冊狀態
-python -c "from utils.core.registry import registry; print(registry.get_all_generators())"
+# 2. 測試圖形生成功能  
+py -c "from figures import get_figure_generator; gen = get_figure_generator('my_triangle_figure')(); print('✅ 圖形生成器運行正常')"
+
+# 3. 檢查 Pydantic 參數驗證
+py -c "from my_figure_module import MyFigureParams; p = MyFigureParams(side_a=3, side_b=4, side_c=5); print('✅ Pydantic 驗證正常')"
+
+# 4. 執行測試
+py -m pytest tests/test_figures/ -v
+
+# 5. 檢查新架構工具整合
+py -c "from utils import get_logger, global_config; print('✅ 新架構工具正常')"
 ```
+
+## 📋 **長期維護計劃**
+
+### **🔄 定期更新任務**
+
+1. **圖形系統與題目系統同步** (每季度)
+   - 確保圖形生成器的 Pydantic 參數驗證與題目生成器保持一致
+   - 檢查註冊系統差異是否需要統一
+   - 驗證所有範例代碼可正常執行
+
+2. **實用性和準確性維護** (持續進行)
+   - 收集開發者對圖形開發工具的反饋
+   - 改善範例代碼的實用性，提供更多實際可運行的小範例
+   - 新增常見圖形開發錯誤的除錯指南
+
+3. **新功能和最佳實踐整合** (隨新功能發布)
+   - 當 Phase 4 引入新的圖形渲染特性時，及時更新指南
+   - 整合新的 Pydantic 特性和圖形參數驗證最佳實踐
+   - 更新測試和驗證流程
+
+### **🎯 改善優先順序**
+
+**高優先級**：
+- 保持圖形註冊系統範例的準確性 (@register_figure_generator)
+- 確保 Pydantic 參數驗證範例可運行
+- 維護新架構工具導入的正確性 (utils API)
+
+**中優先級**：
+- 擴展實際可運行的圖形生成範例
+- 改善 TikZ 代碼生成的測試指導
+- 新增圖形效能優化建議
+
+**低優先級**：
+- 美化文檔排版和圖表展示
+- 新增更多複雜圖形組合的使用場景
+- 建立圖形系統的視覺化架構圖
+
+### **🔧 圖形系統特有維護項目**
+
+1. **圖形註冊系統一致性**
+   - 監控圖形生成器註冊機制是否與題目生成器統一
+   - 評估是否需要將 @register_figure_generator 遷移到統一系統
+
+2. **TikZ 代碼品質**
+   - 檢查生成的 TikZ 代碼範例是否符合最新 LaTeX 標準
+   - 驗證幾何計算 API 的使用是否正確
+
+3. **Pydantic 參數模型最佳實踐**
+   - 確保圖形參數驗證遵循 Phase 4 建立的最佳實踐
+   - 維護參數驗證器的數學正確性
+
+### **📞 維護聯絡**
+
+當發現文檔問題時：
+1. 優先檢查是否為圖形系統代碼變更導致
+2. 參考最新的 figures/ 目錄實際代碼
+3. 確保修正後的範例可以生成正確的 TikZ 代碼
+4. 特別注意圖形註冊系統與題目註冊系統的差異

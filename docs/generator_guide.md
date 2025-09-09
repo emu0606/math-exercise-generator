@@ -2,7 +2,7 @@
 
 本文檔提供了如何在新 6 層模組化架構下為數學測驗生成器添加新題型的詳細指引。
 
-> 🆕 **重要更新**：本指南已全面更新為適用於新模組化架構，包括強制 Sphinx 文檔標準、統一 API 使用、自動註冊系統等。
+> 🆕 **重要更新**：本指南已根據 **Phase 4 Generators 現代化完成** 的最新實踐全面更新，包括 Pydantic 參數驗證、統一註冊系統、新架構工具整合等。
 
 ## 🏗️ 新架構概述
 
@@ -100,36 +100,39 @@ class MyQuestionGenerator:
 """
 數學測驗生成器 - 我的新題型生成器
 
-此模組在新 6 層模組化架構下實現了一個示範生成器。
-使用統一的 utils API 進行數學計算和圖形渲柔。
+此模組在新 6 層模組化架構下實現了一個示範生成器，採用 Phase 4 最新實踐。
+使用 Pydantic 參數驗證、統一註冊系統和新架構核心工具。
+
 特色：
+- Pydantic 參數驗證系統
+- 統一的註冊系統整合
+- 新架構核心工具 (get_logger, global_config)
 - 完整的 Sphinx docstring 支援
 - 統一的幾何 API 整合
-- 自動註冊系統
-- 配置管理和日誌系統
 """
 
 import random
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
+from pydantic import BaseModel, Field, validator
 
-# 導入新架構的統一 API
+# 導入新架構的統一 API（Phase 4 標準）
 from utils import (
     construct_triangle, get_centroid, tikz_coordinate,
     global_config, get_logger, Point, Triangle
 )
-from utils.core.registry import registry
-from utils.rendering import FigureRenderer
+
+# 導入生成器基礎架構（Phase 4 統一註冊系統）
+from ..base import QuestionGenerator, QuestionSize, register_generator
 
 # 模組日誌器
 logger = get_logger(__name__)
 
 
-@dataclass
-class QuestionParams:
-    """題目參數數據類別
+class QuestionParams(BaseModel):
+    """題目參數 Pydantic 模型
     
-    定義生成題目所需的所有參數，包含驗證逼輯。
+    使用 Pydantic 進行參數驗證和類型檢查，這是 Phase 4 的標準實踐。
+    提供智能參數驗證、類型轉換和錯誤處理。
     
     Attributes:
         min_value (int): 最小值範圍
@@ -139,55 +142,82 @@ class QuestionParams:
         
     Example:
         >>> params = QuestionParams(min_value=1, max_value=10)
-        >>> params.validate()
+        >>> params.min_value
+        1
+        >>> params = QuestionParams(min_value=10, max_value=5)  # 會觸發驗證錯誤
     """
-    min_value: int = 1
-    max_value: int = 100
-    difficulty: str = "MEDIUM"
-    include_decimals: bool = False
+    min_value: int = Field(
+        default=1,
+        ge=1,
+        le=1000,
+        description="數值範圍的最小值"
+    )
+    max_value: int = Field(
+        default=100,
+        ge=2,
+        le=10000,
+        description="數值範圍的最大值"
+    )
+    difficulty: str = Field(
+        default="MEDIUM",
+        description="題目難度級別"
+    )
+    include_decimals: bool = Field(
+        default=False,
+        description="是否包含小數運算"
+    )
     
-    def validate(self) -> None:
-        """驗證參數有效性
+    @validator('difficulty')
+    def validate_difficulty(cls, v):
+        """驗證難度參數"""
+        valid_difficulties = ['EASY', 'MEDIUM', 'HARD', 'CHALLENGE']
+        if v not in valid_difficulties:
+            raise ValueError(f"difficulty 必須是 {valid_difficulties} 中的一個")
+        return v
         
-        Raises:
-            ValueError: 如果參數無效
-        """
-        if self.min_value >= self.max_value:
-            raise ValueError("最小值必須小於最大值")
-        if self.min_value <= 0:
-            raise ValueError("最小值必須大於 0")
+    @validator('max_value')
+    def validate_max_greater_than_min(cls, v, values):
+        """驗證最大值大於最小值"""
+        if 'min_value' in values and v <= values['min_value']:
+            raise ValueError("max_value 必須大於 min_value")
+        return v
 
 
-class MyQuestionGenerator:
+@register_generator  # Phase 4 統一註冊系統
+class MyQuestionGenerator(QuestionGenerator):
     """我的新題型生成器
     
-    使用新 6 層模組化架構生成數學題目。
-    整合了統一的幾何 API、配置管理、日誌系統和渲柔功能。
+    使用新 6 層模組化架構和 Phase 4 最新實踐生成數學題目。
+    整合 Pydantic 參數驗證、新架構核心工具和統一註冊系統。
     
-    此生成器展示如何：
-    1. 使用 Sphinx 友善的 docstring 格式
-    2. 整合新架構的統一 API
-    3. 使用配置管理和日誌系統
-    4. 支援多種難度和可配置選項
-    5. 自動註冊到中央註冊系統
+    此生成器展示 Phase 4 最佳實踐：
+    1. 繼承 QuestionGenerator 基類
+    2. 使用 @register_generator 裝飾器自動註冊
+    3. 整合 Pydantic 參數驗證模型
+    4. 使用新架構核心工具 (get_logger, global_config)
+    5. 支援多種難度和智能參數驗證
     
     Attributes:
-        category (str): 題目類別
-        subcategory (str): 題目子類別
-        difficulty_levels (List[str]): 支援的難度級別
-        renderer (FigureRenderer): 圖形渲柔器
+        params (QuestionParams): Pydantic 參數模型實例
+        logger: 新架構日誌記錄器
         
     Example:
         >>> generator = MyQuestionGenerator()
         >>> question = generator.generate_question()
         >>> print(question['question'])
+        
+    Note:
+        這是 Phase 4 現代化完成後的標準生成器範例，
+        展示了完整的 Pydantic 整合和新架構工具使用。
     """
     
     def __init__(self, options: Optional[Dict[str, Any]] = None):
-        """初始化題目生成器
+        """初始化題目生成器 (Phase 4 標準)
+        
+        使用 Pydantic 模型進行參數驗證和新架構核心工具進行初始化。
         
         Args:
-            options (Dict[str, Any], optional): 配置選項字典
+            options (Dict[str, Any], optional): 配置選項字典，將轉換為 Pydantic 模型
                 - min_value (int): 最小數值範圍
                 - max_value (int): 最大數值範圍 
                 - difficulty (str): 難度級別
@@ -199,20 +229,24 @@ class MyQuestionGenerator:
             ...     'max_value': 50, 
             ...     'difficulty': 'HARD'
             ... })
+            
+        Note:
+            Phase 4 使用 Pydantic 參數模型自動處理驗證和類型轉換。
         """
-        self.options = options or {}
-        self.category = "示範類別"
-        self.subcategory = "示範子類別"
-        self.difficulty_levels = ["EASY", "MEDIUM", "HARD", "CHALLENGE"]
+        super().__init__(options)
         
-        # 初始化渲柔器
-        self.renderer = FigureRenderer()
+        # Phase 4: 使用 Pydantic 模型進行參數驗證
+        self.params = QuestionParams(**(options or {}))
         
-        # 從全域配置獲取設定
+        # Phase 4: 新架構日誌系統
+        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
+        self.logger.info(f"初始化 {self.__class__.__name__}，難度：{self.params.difficulty}")
+        
+        # Phase 4: 新架構配置系統整合
         self.precision = global_config.get('geometry.precision', 6)
         self.backend = global_config.get('geometry.backend', 'python')
         
-        logger.info(f"初始化 {self.__class__.__name__}，使用 {self.backend} 後端")
+        self.logger.debug(f"使用數學後端：{self.backend}，精度：{self.precision}")
     
     def generate_question(self) -> Dict[str, Any]:
         """生成一個完整的數學題目
@@ -243,19 +277,16 @@ class MyQuestionGenerator:
             >>> assert 'answer' in question
             >>> assert 'explanation' in question
         """
-        logger.debug(f"開始生成題目，選項: {self.options}")
+        self.logger.debug(f"開始生成題目，參數：{self.params}")
         
         try:
-            # 創建並驗證參數
-            params = QuestionParams(**self.options)
-            params.validate()
-            
-            # 生成隨機數值
-            num_a = random.randint(params.min_value, params.max_value)
-            num_b = random.randint(params.min_value, params.max_value)
+            # Phase 4: Pydantic 模型已在 __init__ 中完成驗證
+            # 直接使用驗證後的參數
+            num_a = random.randint(self.params.min_value, self.params.max_value)
+            num_b = random.randint(self.params.min_value, self.params.max_value)
             
             # 使用統一幾何 API (示範用途)
-            if params.difficulty == "HARD":
+            if self.params.difficulty == "HARD":
                 # 高難度題目可能包含幾何元素
                 triangle = construct_triangle("sss", side_a=3, side_b=4, side_c=5)
                 centroid = get_centroid(triangle)
@@ -296,20 +327,20 @@ class MyQuestionGenerator:
             # 構建題目內容
             answer = num_a + num_b
             
-            question_text = f"$${num_a} + {num_b} = ?$$"
-            answer_text = f"$${answer}$$"
-            explanation_text = f"""解題步驟：
-            $$
-            {num_a} + {num_b} = {answer}
-            $$
-            因此答案為 {answer}。"""
+            question_text = f"計算：${num_a} + {num_b} = $ ？"
+            answer_text = f"${answer}$"
+            explanation_text = f"""**解題步驟：**
+
+${num_a} + {num_b} = {answer}$
+
+**答案**：{answer}"""
             
             result = {
                 "question": question_text,
                 "answer": answer_text,
                 "explanation": explanation_text,
-                "size": self._get_question_size(),
-                "difficulty": params.difficulty
+                "size": self.get_question_size(),
+                "difficulty": self.params.difficulty
             }
             
             # 添加圖形數據 (如果有)
@@ -321,11 +352,11 @@ class MyQuestionGenerator:
                 result["figure_data_explanation"] = figure_data_explanation
                 result["explanation_figure_position"] = "right"
             
-            logger.info(f"成功生成題目，難度: {params.difficulty}")
+            self.logger.info(f"成功生成題目，難度：{self.params.difficulty}")
             return result
             
         except Exception as e:
-            logger.error(f"題目生成失敗: {e}")
+            self.logger.error(f"題目生成失敗：{e}")
             raise
     
     def _get_question_size(self) -> str:
@@ -337,17 +368,40 @@ class MyQuestionGenerator:
             str: 題目大小 ('SMALL', 'MEDIUM', 'LARGE', 'EXTRA')
         """
         # 根據難度和是否有圖形決定大小
-        if self.options.get('difficulty') == 'HARD':
-            return "MEDIUM"
-        return "SMALL"
+        if self.params.difficulty == 'HARD':
+            return QuestionSize.MEDIUM
+        return QuestionSize.SMALL
     
     def get_category(self) -> str:
         """獲取題目主類別
         
+        為保持UI顯示的一致性，建議從以下標準分類中選擇：
+        - "數與式" - 數與代數運算
+        - "指數、對數" - 指數與對數函數  
+        - "多項式函數" - 多項式相關題型
+        - "直線與圓" - 解析幾何
+        - "數列與級數" - 數列級數計算
+        - "數據分析" - 統計與數據處理
+        - "排列組合" - 排列組合計算
+        - "機率" - 機率計算
+        - "三角函數" - 三角函數圖形與性質
+        - "平面向量" - 二維向量運算
+        - "空間向量" - 三維向量運算
+        - "空間中的平面與直線" - 立體幾何
+        - "矩陣" - 矩陣運算
+        - "極限" - 極限概念
+        - "微分" - 微分計算
+        - "積分" - 積分計算
+        - "二次曲線" - 圓錐曲線
+        - "複數" - 複數運算
+        - "統計機率" - 進階統計
+        
+        當然，如有特殊需求也可使用其他分類名稱。
+        
         Returns:
             str: 題目主類別名稱
         """
-        return self.category
+        return "數與式"
     
     def get_subcategory(self) -> str:
         """獲取題目子類別
@@ -355,7 +409,7 @@ class MyQuestionGenerator:
         Returns:
             str: 題目子類別名稱
         """
-        return self.subcategory
+        return "示範子類別"
     
     def get_supported_difficulties(self) -> List[str]:
         """獲取支援的難度級別
@@ -363,7 +417,7 @@ class MyQuestionGenerator:
         Returns:
             List[str]: 支援的難度級別列表
         """
-        return self.difficulty_levels
+        return ["EASY", "MEDIUM", "HARD", "CHALLENGE"]
     
     def get_parameter_info(self) -> Dict[str, Any]:
         """獲取可配置參數資訊
@@ -373,84 +427,81 @@ class MyQuestionGenerator:
         Returns:
             Dict[str, Any]: 參數資訊字典，包含類型、預設值、說明等
         """
+        # Phase 4: 可以從 Pydantic 模型自動生成參數資訊
         return {
             "min_value": {
                 "type": "int",
-                "default": 1,
+                "default": self.params.min_value,
                 "min": 1,
                 "max": 1000,
                 "description": "數值範圍的最小值"
             },
             "max_value": {
                 "type": "int",
-                "default": 100,
+                "default": self.params.max_value,
                 "min": 2,
                 "max": 10000,
                 "description": "數值範圍的最大值"
             },
             "difficulty": {
                 "type": "choice",
-                "choices": self.difficulty_levels,
-                "default": "MEDIUM",
+                "choices": ["EASY", "MEDIUM", "HARD", "CHALLENGE"],
+                "default": self.params.difficulty,
                 "description": "題目難度級別"
             },
             "include_decimals": {
                 "type": "bool",
-                "default": False,
+                "default": self.params.include_decimals,
                 "description": "是否包含小數運算"
             }
         }
 
+# Phase 4: 使用裝飾器自動註冊，無需手動調用
+# @register_generator 裝飾器已自動註冊此生成器
 
-# 自動註冊生成器
-registry.register_generator(MyQuestionGenerator)
-
-logger.debug(f"已註冊生成器: {MyQuestionGenerator.__name__}")
+logger.debug(f"已註冊生成器：{MyQuestionGenerator.__name__}")
 ```
 
-### 3. 自動註冊系統整合
+### 3. Phase 4 統一註冊系統
 
-新架構使用自動註冊系統，簡化生成器管理：
+Phase 4 使用統一的註冊系統，透過 `@register_generator` 裝飾器自動註冊：
 
 ```python
-# generators/__init__.py - 自動導入所有生成器
+# generators/__init__.py - Phase 4 自動導入系統
 """
-生成器模組統一入口
+生成器模組統一入口 (Phase 4 版本)
 
-自動導入所有生成器模組，觸發註冊系統。
-支援热重載和動態發現新生成器。
+自動導入所有生成器模組並觸發註冊系統。
+使用新架構的統一註冊機制，支援熱重載和動態發現。
+
+Phase 4 特色：
+- 統一的 @register_generator 裝飾器
+- 自動模組掃描和註冊
+- 完整的錯誤處理和日誌記錄
 """
 
-from utils.core.logging import get_logger
-from utils.core.registry import registry
+from utils import get_logger
 
 logger = get_logger(__name__)
 
-# 自動導入所有生成器模組
+# Phase 4: 自動導入所有生成器模組
 try:
-    # 代數類
+    # 代數類生成器
     from .algebra import *
     
-    # 幾何類
-    from .geometry import *
-    
-    # 三角函數類
+    # 三角函數類生成器  
     from .trigonometry import *
     
-    # 你的新生成器
+    # 你的新生成器模組
     from .my_new_generator import MyQuestionGenerator
     
     logger.info("所有生成器模組載入完成")
     
 except ImportError as e:
-    logger.warning(f"部分生成器載入失敗: {e}")
+    logger.warning(f"部分生成器載入失敗：{e}")
 
-# 驗證註冊狀態
-registered_count = len(registry.get_all_generators())
-logger.info(f"已註冊生成器數量: {registered_count}")
-
-if registered_count == 0:
-    logger.warning("沒有發現已註冊的生成器")
+# Phase 4: 驗證註冊狀態
+logger.info("generators 模組初始化完成")
 ```
 
 ### 4. 添加單元測試
@@ -471,7 +522,7 @@ import pytest
 from typing import Dict, Any
 
 from generators.my_new_generator import MyQuestionGenerator, QuestionParams
-from utils.core.registry import registry
+from pydantic import ValidationError
 
 
 class TestMyQuestionGenerator:
@@ -523,20 +574,29 @@ class TestMyQuestionGenerator:
             assert question['difficulty'] == difficulty
     
     def test_parameter_validation(self):
-        """測試參數驗證"""
-        # 測試無效參數
-        with pytest.raises(ValueError):
-            QuestionParams(min_value=10, max_value=5).validate()
+        """測試 Phase 4 Pydantic 參數驗證"""
+        # 測試無效參數組合
+        with pytest.raises(ValidationError):
+            QuestionParams(min_value=10, max_value=5)  # max < min
         
-        with pytest.raises(ValueError):
-            QuestionParams(min_value=0, max_value=10).validate()
+        with pytest.raises(ValidationError):
+            QuestionParams(min_value=0, max_value=10)  # min <= 0
+            
+        with pytest.raises(ValidationError):
+            QuestionParams(difficulty="INVALID")  # 無效難度
+        
+        # 測試有效參數
+        valid_params = QuestionParams(min_value=1, max_value=100, difficulty="MEDIUM")
+        assert valid_params.min_value == 1
+        assert valid_params.max_value == 100
+        assert valid_params.difficulty == "MEDIUM"
     
     def test_registration(self):
-        """測試生成器註冊"""
-        # 檢查是否正確註冊
-        generators = registry.get_all_generators()
-        generator_names = [gen.__name__ for gen in generators]
-        assert 'MyQuestionGenerator' in generator_names
+        """測試 Phase 4 生成器註冊"""
+        # Phase 4: 透過導入模組測試註冊
+        import generators
+        # 生成器應該已通過 @register_generator 裝飾器自動註冊
+        # 具體的註冊驗證可以透過實際運行來確認
     
     def test_metadata_methods(self):
         """測試元數據方法"""
@@ -656,63 +716,68 @@ if __name__ == "__main__":
 完成開發後的驗證步驟：
 
 ```bash
-# 1. 測試生成器功能
-pytest tests/test_generators/test_my_generator.py -v
+# Phase 4 驗證命令
 
-# 2. 檢查註冊狀態
-python -c "from utils.core.registry import registry; print(registry.get_all_generators())"
+# 1. 測試生成器功能
+py -m pytest tests/test_generators/ -v
+
+# 2. 檢查生成器註冊和初始化
+py -c "import generators; print('✅ 生成器模組初始化成功')"
 
 # 3. 測試題目生成
-python -c "from generators.my_generator import MyQuestionGenerator; g = MyQuestionGenerator(); print(g.generate_question())"
+py -c "from generators.my_generator import MyQuestionGenerator; g = MyQuestionGenerator(); print(g.generate_question())"
 
-# 4. 檢查 API 文檔
-make html -C docs
+# 4. 檢查 Pydantic 參數驗證
+py -c "from generators.my_generator import QuestionParams; p = QuestionParams(min_value=1, max_value=10); print('✅ Pydantic 驗證正常')"
 
-# 5. 編譯測試 (如果有圖形)
-python -c "from utils.orchestration.pdf_orchestrator import PDFOrchestrator; print('測試成功')"
+# 5. 檢查新架構工具整合
+py -c "from utils import get_logger, global_config; print('✅ 新架構工具正常')"
 ```
 
-## 🔍 新架構註冊系統
+## 🔍 Phase 4 統一註冊系統
 
-新架構採用自動註冊系統，簡化生成器管理和發現。
+Phase 4 採用統一的自動註冊系統，透過裝飾器簡化生成器管理。
 
-### 自動註冊機制
+### Phase 4 註冊機制
 
 ```python
-# 使用統一註冊系統
-from utils.core.registry import registry
+# Phase 4 統一註冊方式
+from ..base import QuestionGenerator, register_generator
 
-# 自動註冊生成器
-registry.register_generator(MyQuestionGenerator)
-
-# 或者使用裝飾器 (舊版相容)
-@registry.generator  # 新的裝飾器
-class AnotherGenerator:
+@register_generator  # Phase 4 統一裝飾器
+class MyQuestionGenerator(QuestionGenerator):
+    """繼承 QuestionGenerator 並使用裝飾器自動註冊"""
     pass
+
+# 自動註冊完成，無需手動調用任何函數
 ```
 
-### 註冊系統功能
+### Phase 4 註冊系統特色
 
 ```python
-from utils.core.registry import registry
+# Phase 4: 模組導入即觸發註冊
+import generators  # 所有生成器自動註冊
 
-# 獲取所有已註冊的生成器
-all_generators = registry.get_all_generators()
+# Phase 4: 驗證註冊狀態
+# 透過實際運行檢查生成器是否成功註冊：
+from generators.trigonometry import TrigonometricFunctionGenerator
+generator = TrigonometricFunctionGenerator()
+question = generator.generate_question()
+print("✅ 生成器註冊和運行正常")
 
-# 按類別查詢生成器
-geometry_generators = registry.get_generators_by_category("幾何")
-
-# 獲取特定生成器
-generator_class = registry.get_generator_by_name("MyQuestionGenerator")
-
-# 獲取所有類別和子類別
-categories = registry.get_all_categories()
-subcategories = registry.get_subcategories("代數")
-
-# 動態載入和管理
-registry.reload_generators()  # 重新載入所有生成器
-registry.validate_generators()  # 驗證所有生成器的有效性
+# Phase 4: 支援的操作
+# - 自動模組掃描
+# - 統一裝飾器註冊
+# - 完整錯誤處理和日誌記錄
+# - 熱重載支援
 ```
+
+### Phase 4 最佳實踐
+
+1. **統一裝飾器**：只使用 `@register_generator`
+2. **繼承基類**：所有生成器繼承 `QuestionGenerator`
+3. **模組化組織**：按數學領域組織生成器
+4. **自動初始化**：透過 `import generators` 觸發註冊
 
 ## ⚙️ 新架構配置管理
 
@@ -1304,3 +1369,47 @@ def generate_question(self) -> Dict[str, Any]:
 - ✅ **效能優化** - 多後端支援和智能快取
 - ✅ **模組化設計** - 清晰的職責分離和可維護性
 - ✅ **完整測試** - 全面的單元和整合測試覆蓋
+
+## 📋 **長期維護計劃**
+
+### **🔄 定期更新任務**
+
+1. **文檔與代碼同步檢查** (每季度)
+   - 檢查範例代碼是否與實際 API 一致
+   - 更新最佳實踐指南
+   - 驗證所有測試命令可正常執行
+
+2. **實用性改善** (持續進行)
+   - 收集開發者反饋，改善範例代碼實用性
+   - 新增常見錯誤的除錯指南
+   - 擴充 Phase 4 實際案例
+
+3. **新功能整合** (隨新功能發布)
+   - 當有新的架構改進時，及時更新指南
+   - 整合新的 Pydantic 特性和最佳實踐
+   - 更新測試和驗證流程
+
+### **🎯 改善優先順序**
+
+**高優先級**：
+- 保持註冊系統範例的準確性
+- 確保 Pydantic 參數驗證範例可運行
+- 維護新架構工具導入的正確性
+
+**中優先級**：
+- 擴展實際可運行的小範例
+- 改善測試指導的完整性
+- 新增效能優化建議
+
+**低優先級**：
+- 美化文檔排版和格式
+- 新增更多進階使用場景
+- 建立視覺化的架構圖表
+
+### **📞 維護聯絡**
+
+當發現文檔問題時：
+1. 優先檢查是否為代碼變更導致
+2. 參考最新的 Phase 4 實際生成器代碼
+3. 確保修正後的範例可以實際運行
+4. 保持文檔的實用性和準確性

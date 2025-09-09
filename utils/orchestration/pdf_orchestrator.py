@@ -250,8 +250,8 @@ class PDFOrchestrator:
         Returns:
             原始題目列表
         """
-        from ..pdf_generator import _generate_raw_questions
-        return _generate_raw_questions(selected_data)
+        from .question_distributor import generate_raw_questions
+        return generate_raw_questions(selected_data)
     
     def _distribute_questions(self, raw_questions: List[Dict[str, Any]], 
                             rounds: int, questions_per_round: int) -> List[Dict[str, Any]]:
@@ -265,8 +265,8 @@ class PDFOrchestrator:
         Returns:
             排序後的題目列表
         """
-        from ..pdf_generator import _distribute_questions
-        return _distribute_questions(raw_questions, rounds, questions_per_round)
+        from .question_distributor import distribute_questions
+        return distribute_questions(raw_questions, rounds, questions_per_round)
     
     def _generate_latex_contents(self, layout_results: Any, ordered_questions: List[Dict[str, Any]], 
                                content_config: ContentConfig) -> Dict[str, str]:

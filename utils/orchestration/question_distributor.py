@@ -106,13 +106,35 @@ class QuestionGenerator:
             
             logger.debug(f"生成 {topic} 題型，數量: {count}")
             
-            # 檢查題型是否已註冊
-            if not registry.is_registered(topic):
-                logger.error(f"題型 {topic} 未註冊")
-                raise ValueError(f"未知的題型: {topic}")
+            # 解析題型格式 (UI格式為 "category - subcategory")
+            if ' - ' in topic:
+                category, subcategory = topic.split(' - ', 1)
+            else:
+                # 如果topic格式不包含' - ', 嘗試從registry中查找
+                logger.warning(f"題型格式可能不正確: {topic}")
+                # 暫時跳過檢查，直接嘗試獲取
+                category, subcategory = None, None
             
-            # 生成該題型的題目
-            generator = registry.get_generator(topic)
+            # 檢查題型是否已註冊
+            if category and subcategory:
+                if not registry.has_generator(category, subcategory):
+                    logger.error(f"題型 {topic} ({category}/{subcategory}) 未註冊")
+                    raise ValueError(f"未知的題型: {topic}")
+                
+                # 生成該題型的題目
+                generator = registry.get_generator(category, subcategory)
+            else:
+                # 降級處理：嘗試從所有生成器中查找匹配的
+                all_generators = registry.get_all_generators()
+                generator = None
+                for (cat, subcat), gen_class in all_generators.items():
+                    if topic == cat or topic == subcat or topic == f"{cat}/{subcat}":
+                        generator = gen_class
+                        break
+                
+                if generator is None:
+                    logger.error(f"無法找到題型生成器: {topic}")
+                    raise ValueError(f"未知的題型: {topic}")
             
             for i in range(count):
                 try:

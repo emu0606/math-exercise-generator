@@ -244,8 +244,32 @@ class TrigonometricFunctionGeneratorRadius(QuestionGenerator):
     
     def get_category(self) -> str:
         """獲取題目類別"""
-        return "三角比"
+        return "三角函數"
     
     def get_subcategory(self) -> str:
         """獲取題目子類別"""
-        return "三角函數值計算(弧度)"
+        return "三角函數值_弧度角"
+    
+    @classmethod
+    def get_generator_info(cls) -> Dict[str, Any]:
+        """取得生成器詳細資訊
+        
+        Returns:
+            Dict[str, Any]: 包含生成器詳細資訊的字典
+        """
+        return {
+            "name": "弧度制三角函數值計算生成器",
+            "version": "2.0",
+            "description": "生成弧度制特殊角的三角函數值計算題目",
+            "author": "Math Exercise Generator Team",
+            "supported_functions": ["sin", "cos", "tan", "cot", "sec", "csc"],
+            "angle_system": "radian",
+            "difficulty_levels": ["EASY", "MEDIUM", "HARD"],
+            "features": [
+                "符號精確計算", 
+                "單位圓視覺化",
+                "智能未定義值處理",
+                "完整數學推理"
+            ],
+            "architecture": "new_2.0_pydantic_based"
+        }
