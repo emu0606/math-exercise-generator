@@ -22,7 +22,7 @@ from PyQt5.QtCore import Qt
 
 
 from ui.utils import load_icon
-
+from ui.font_manager import FontManager
 from ui.category_widget import CategoryWidget
 
 from ui.settings_widget import SettingsWidget
@@ -51,6 +51,8 @@ class MathTestGenerator(QMainWindow):
         super().__init__()
 
         
+        # === 新增：字體管理器 ===
+        self.font_manager = FontManager(self)
 
         # 套用外部樣式表
 
@@ -63,6 +65,8 @@ class MathTestGenerator(QMainWindow):
         self.initUI()
 
         
+        # 套用用戶字體偏好
+        self.font_manager.apply_font_scale(self.font_manager.current_scale)
 
         # 填充範例資料
 
@@ -73,6 +77,11 @@ class MathTestGenerator(QMainWindow):
         # 連接信號
 
         self.connect_signals()
+        
+        # === 臨時：測試按鈕響應 ===
+        self.zoom_in_btn.clicked.connect(lambda: self.update_status("放大按鈕已點擊"))
+        self.zoom_out_btn.clicked.connect(lambda: self.update_status("縮小按鈕已點擊"))  
+        self.reset_zoom_btn.clicked.connect(lambda: self.update_status("重置按鈕已點擊"))
 
         
 
@@ -114,6 +123,30 @@ class MathTestGenerator(QMainWindow):
 
         except FileNotFoundError:
 
+            print(f"警告: {STYLE_SHEET_PATH} 未找到，使用預設樣式。")
+
+    def load_stylesheet_with_zoom(self, dynamic_css=""):
+        """載入樣式表並套用動態縮放CSS"""
+        try:
+            with open(STYLE_SHEET_PATH, "r", encoding="utf-8") as f:
+                base_css = f.read()
+                
+            # 處理勾選框圖示路徑 (現有邏輯)
+            base_css = base_css.replace("QCheckBox::indicator:unchecked {", 
+                                     """QCheckBox::indicator:unchecked {
+                                         image: url(assets/icons/square.svg);""")
+            base_css = base_css.replace("QCheckBox::indicator:checked {", 
+                                     """QCheckBox::indicator:checked {
+                                         image: url(assets/icons/check-square.svg);""")
+            base_css = base_css.replace("QCheckBox::indicator:partially-checked {", 
+                                     """QCheckBox::indicator:indeterminate {
+                                         image: url(assets/icons/minus-square.svg);""")
+            
+            # 合併動態CSS
+            combined_css = base_css + dynamic_css
+            self.setStyleSheet(combined_css)
+            
+        except FileNotFoundError:
             print(f"警告: {STYLE_SHEET_PATH} 未找到，使用預設樣式。")
 
 
@@ -238,7 +271,81 @@ class MathTestGenerator(QMainWindow):
 
         main_layout.addWidget(splitter)
 
+        # === 新增：狀態列 ===
+        self.create_status_bar()
         
+
+    def create_status_bar(self):
+        """建立狀態列，包含字體縮放控制"""
+        statusbar = self.statusBar()
+        
+        # 左側：狀態資訊
+        self.status_label = QLabel("準備就緒")
+        statusbar.addWidget(self.status_label)
+        
+        # 右側：字體縮放控制
+        zoom_widget = self.create_zoom_controls()
+        statusbar.addPermanentWidget(zoom_widget)
+
+    def create_zoom_controls(self):
+        """建立字體縮放控制元件"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 5, 0)
+        layout.setSpacing(3)
+        
+        # 縮小按鈕
+        self.zoom_out_btn = QPushButton()
+        self.zoom_out_btn.setIcon(load_icon('zoom-out.svg'))
+        self.zoom_out_btn.setObjectName("iconButton")
+        self.zoom_out_btn.setToolTip("縮小字體\n可用範圍: 50%-200%\n目前步驟: 50%, 75%, 90%, 100%, 110%, 125%, 150%, 200%")
+        self.zoom_out_btn.setFixedSize(24, 24)
+        
+        # 字體大小標籤 (可點擊)
+        from PyQt5.QtCore import pyqtSignal
+        
+        class ClickableLabel(QLabel):
+            clicked = pyqtSignal()
+            def __init__(self, text):
+                super().__init__(text)
+                self.setCursor(Qt.PointingHandCursor)  # 設定手型游標
+                
+            def mousePressEvent(self, event):
+                self.clicked.emit()
+                super().mousePressEvent(event)
+            def enterEvent(self, event):
+                self.setStyleSheet("font-weight: bold; color: #3498db;")
+                super().enterEvent(event)
+            def leaveEvent(self, event):
+                self.setStyleSheet("font-weight: bold; color: #2c3e50;")
+                super().leaveEvent(event)
+        
+        self.font_size_label = ClickableLabel("100%")
+        self.font_size_label.setMinimumWidth(45)
+        self.font_size_label.setAlignment(Qt.AlignCenter)
+        self.font_size_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
+        self.font_size_label.setToolTip("目前字體縮放比例\n點擊可快速重置為100%")
+        
+        # 放大按鈕
+        self.zoom_in_btn = QPushButton()
+        self.zoom_in_btn.setIcon(load_icon('zoom-in.svg'))
+        self.zoom_in_btn.setObjectName("iconButton")
+        self.zoom_in_btn.setToolTip("放大字體\n可用範圍: 50%-200%\n目前步驟: 50%, 75%, 90%, 100%, 110%, 125%, 150%, 200%")
+        self.zoom_in_btn.setFixedSize(24, 24)
+        
+        # 重置按鈕
+        self.reset_zoom_btn = QPushButton("重置")
+        self.reset_zoom_btn.setObjectName("iconButton")
+        self.reset_zoom_btn.setToolTip("重置為預設字體大小 (100%)")
+        self.reset_zoom_btn.setMaximumWidth(40)
+        
+        layout.addWidget(QLabel("字體:"))
+        layout.addWidget(self.zoom_out_btn)
+        layout.addWidget(self.font_size_label)
+        layout.addWidget(self.zoom_in_btn)
+        layout.addWidget(self.reset_zoom_btn)
+        
+        return widget
 
     def load_categories(self):
         """從註冊器加載分類數據"""
@@ -294,7 +401,28 @@ class MathTestGenerator(QMainWindow):
 
         self.settings_widget.distribute_even_btn.clicked.connect(self.distribute_evenly)
 
+        # === 新增：字體縮放信號 ===
+        self.zoom_in_btn.clicked.connect(self.font_manager.increase_font_size)
+        self.zoom_out_btn.clicked.connect(self.font_manager.decrease_font_size)
+        self.reset_zoom_btn.clicked.connect(self.font_manager.reset_font_size)
+        self.font_size_label.clicked.connect(self.font_manager.reset_font_size)
+
         
+
+    def update_status(self, message):
+        """更新狀態列訊息"""
+        if hasattr(self, 'status_label'):
+            self.status_label.setText(message)
+            
+    def update_font_operation_status(self, operation, scale_percent):
+        """更新字體操作狀態"""
+        status_map = {
+            'increase': f"字體已放大至 {scale_percent}%",
+            'decrease': f"字體已縮小至 {scale_percent}%", 
+            'reset': "字體已重置為預設大小 (100%)",
+            'load': f"載入字體偏好設定: {scale_percent}%"
+        }
+        self.update_status(status_map.get(operation, f"字體縮放: {scale_percent}%"))
 
     def update_statistics(self):
 

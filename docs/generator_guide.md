@@ -861,6 +861,141 @@ def get_parameter_info(self) -> Dict[str, Any]:
 4. **邊界情況**：處理可能的邊界情況和特殊情況。
 5. **代碼註釋**：添加足夠的註釋，解釋生成邏輯。
 6. **單元測試**：為每個生成器編寫單元測試。
+7. **LaTeX格式規範**：遵循LaTeX數學表達式標準，確保PDF編譯成功。
+
+## 🔤 LaTeX格式規範與PDF兼容性
+
+### **關鍵原則**
+**所有生成器的輸出必須與PDF生成系統兼容**，這意味著：
+
+1. **數學表達式格式**：使用LaTeX數學模式，不是HTML
+2. **Unicode符號問題**：避免使用Unicode符號，使用LaTeX命令  
+3. **換行控制**：使用LaTeX換行符，不是HTML標籤
+4. **圖形數據完整性**：必須包含PDF佈局所需的完整欄位
+
+### **必須遵循的格式標準**
+
+#### **1. 角度符號使用**
+❌ **錯誤 - Unicode符號**:
+```python
+question = "求 sin(30°) 的值"           # Unicode °會導致LaTeX編譯失敗
+explanation = "因為30°是特殊角..."       # PDF生成時出現編碼問題
+```
+
+✅ **正確 - LaTeX命令**:
+```python  
+question = "求 $\\sin(30^\\circ)$ 的值"     # 使用 \circ 命令
+explanation = "因為 $30^\\circ$ 是特殊角..." # LaTeX標準格式
+```
+
+#### **2. 數學表達式格式**
+❌ **錯誤 - HTML格式**:
+```python
+explanation = "步驟1: 計算sin值<br>步驟2: 代入公式<br>結果: 1/2"
+```
+
+✅ **正確 - LaTeX格式**:
+```python
+explanation = "步驟1: 計算 $\\sin$ 值 \\\\ 步驟2: 代入公式 \\\\ 結果: $\\frac{1}{2}$"
+```
+
+#### **3. 必要的返回欄位**
+❌ **不完整 - 缺少PDF所需欄位**:
+```python
+return {
+    "question": question,
+    "answer": answer, 
+    "explanation": explanation,
+    "difficulty": difficulty
+}
+```
+
+✅ **完整 - PDF兼容格式**:
+```python
+return {
+    "question": question,                            # LaTeX格式題目
+    "answer": answer,                               # LaTeX格式答案
+    "explanation": explanation,                      # LaTeX格式解釋 (使用 \\\\ 換行)
+    "size": self.get_question_size(),              # 題目大小
+    "difficulty": difficulty,                       # 難度等級
+    "figure_data_question": figure_data_question,   # 問題圖形數據
+    "figure_data_explanation": figure_data_explanation, # 解釋圖形數據
+    "figure_position": "right",                     # 問題圖形位置
+    "explanation_figure_position": "right"          # 解釋圖形位置
+}
+```
+
+### **常見Unicode符號的LaTeX替代**
+
+| Unicode | LaTeX命令 | 用途 |
+|---------|-----------|------|
+| ° | `^\\circ` | 角度符號 |
+| ± | `\\pm` | 正負號 |
+| × | `\\times` | 乘號 |
+| ÷ | `\\div` | 除號 |
+| ≤ | `\\leq` | 小於等於 |
+| ≥ | `\\geq` | 大於等於 |
+| ≠ | `\\neq` | 不等於 |
+| √ | `\\sqrt{}` | 根號 |
+| π | `\\pi` | 圓周率 |
+| ∞ | `\\infty` | 無窮大 |
+
+### **圖形數據結構範例**
+```python
+# 三角函數題目的標準圖形數據
+figure_data_question = {
+    'type': 'standard_unit_circle',
+    'params': {
+        'angle': angle,
+        'function': func_name,
+        'highlight_angle': True,
+        'show_coordinates': True
+    }
+}
+
+figure_data_explanation = {
+    'type': 'standard_unit_circle',
+    'params': {
+        'angle': angle, 
+        'function': func_name,
+        'show_calculation': True,
+        'highlight_result': True
+    }
+}
+```
+
+### **LaTeX解釋格式範例**
+```python
+def _generate_latex_explanation(self, func_name: str, angle: int, value: str) -> str:
+    """生成LaTeX格式的詳解，確保PDF編譯兼容性"""
+    
+    # 使用LaTeX數學符號和格式
+    explanation = f"""因為 ${func_name} \\theta = \\frac{{對邊}}{{斜邊}}$，\\\\
+    在單位圓中，角度 ${angle}^\\circ$ 對應的點坐標為 $(x, y)$，\\\\
+    所以 ${func_name}({angle}^\\circ) = {value}$"""
+    
+    return explanation
+```
+
+### **測試LaTeX兼容性**
+```python
+def test_latex_compatibility(self):
+    """測試生成的內容是否LaTeX兼容"""
+    question_data = self.generate_question()
+    
+    # 檢查必要欄位
+    required_fields = [
+        'question', 'answer', 'explanation', 
+        'figure_data_question', 'figure_data_explanation'
+    ]
+    for field in required_fields:
+        assert field in question_data, f"缺少必要欄位: {field}"
+    
+    # 檢查LaTeX格式
+    latex_content = question_data['explanation']
+    assert '<br>' not in latex_content, "解釋中包含HTML標籤，應使用LaTeX格式"
+    assert '°' not in latex_content, "包含Unicode角度符號，應使用 ^\\circ"
+```
 
 ## 示例
 

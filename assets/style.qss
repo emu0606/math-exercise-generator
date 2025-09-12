@@ -3,13 +3,13 @@
 /* 全局樣式 */
 QWidget {
     font-family: "Microsoft JhengHei", "微軟正黑體", "Noto Sans TC", sans-serif;
-    font-size: 12px;
+    font-size: 16px;
     color: #333333;
 }
 
 /* 標題樣式 */
 QLabel#title {
-    font-size: 16px;
+    font-size: 20px;
     font-weight: bold;
     color: #2c3e50;
     margin-bottom: 10px;
@@ -87,7 +87,7 @@ QPushButton#iconButton:pressed {
 /* 生成按鈕樣式 */
 QPushButton#generateBtn {
     background-color: #27ae60;
-    font-size: 14px;
+    font-size: 18px;
     font-weight: bold;
 }
 
@@ -212,4 +212,37 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
     background: none;
+}
+
+/* 狀態列樣式 */
+QStatusBar {
+    border-top: 1px solid #bdc3c7;
+    background-color: #f8f9fa;
+    font-size: 15px;
+    color: #7f8c8d;
+}
+
+QStatusBar QLabel {
+    padding: 2px 5px;
+}
+
+/* 縮放控制區域樣式 */
+QStatusBar QWidget {
+    background-color: transparent;
+}
+
+QStatusBar QPushButton#iconButton {
+    border: 1px solid #bdc3c7;
+    border-radius: 3px;
+    background-color: white;
+    padding: 2px;
+}
+
+QStatusBar QPushButton#iconButton:hover {
+    background-color: #ecf0f1;
+    border-color: #95a5a6;
+}
+
+QStatusBar QPushButton#iconButton:pressed {
+    background-color: #d5dbdb;
 }

@@ -22,7 +22,7 @@ class LayoutEngine:
         """初始化佈局引擎"""
         # 網格定義
         self.grid_width = 4  # 列數
-        self.grid_height = 8  # 行數 暫時改行八行試試看四月二十四日
+        self.grid_height = 8  # 行數 
         
         # 尺寸映射: QuestionSize -> (width_cells, height_cells)
         self.size_map = {
