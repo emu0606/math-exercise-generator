@@ -1,8 +1,8 @@
 # Claude Code 開發指南
 
-> **專案**: 數學測驗生成器  
-> **最後更新**: 2025-09-08  
-> **當前階段**: 🏆 現代化完成，開始Debug與打磨階段
+> **專案**: 數學測驗生成器
+> **最後更新**: 2025-09-15
+> **當前階段**: 🔧 Debug與打磨階段 - 防參差佈局修復進行中
 
 ## 🎯 **專案現狀**
 
@@ -16,10 +16,11 @@
 
 ### **🔧 當前階段: Debug與打磨**
 重點任務：
-1. **功能驗證**: 確保所有模組正常運作
-2. **集成測試**: 完整工作流程測試
-3. **性能優化**: 提升用戶體驗
-4. **Bug修復**: 解決發現的問題
+1. **防參差佈局修復**: 修復題目佈局高度混排問題 (進行中)
+2. **功能驗證**: 確保所有模組正常運作
+3. **集成測試**: 完整工作流程測試
+4. **性能優化**: 提升用戶體驗
+5. **Bug修復**: 解決發現的問題
 
 ---
 
@@ -68,13 +69,16 @@ python main.py
 py -c "from utils import get_logger, global_config, Point; print('✅ 核心模組正常')"
 
 # 生成器系統測試
-py -c "from generators import QuestionGenerator; print('✅ 生成器系統正常')"
+py -c "from generators.base import QuestionGenerator; print('✅ 生成器系統正常')"
 
-# 圖形系統測試  
+# 圖形系統測試
 py -c "from figures.params import PointParams, CircleParams; print('✅ 圖形系統正常')"
 
 # UI系統測試
-py -c "from ui import CategoryWidget; print('✅ UI系統正常')"
+py -c "from ui.components.base import BaseWidget; print('✅ UI系統正常')"
+
+# 佈局引擎測試 (當前重點)
+py -c "from utils.core.layout import LayoutEngine; print('✅ 佈局引擎正常')"
 ```
 
 ### **測試套件執行**
@@ -119,10 +123,18 @@ class MyGenerator(QuestionGenerator):
 ## 🐛 **Debug重點區域**
 
 ### **高優先級檢查項目**
+
+#### **當前修復中: 防參差佈局系統**
+- **佈局引擎**: `utils/core/layout.py` - 行高度鎖定機制
+- **題目分配**: `utils/orchestration/question_distributor.py` - 預排序邏輯
+- **策略修復**: Height1Priority雙階段處理邏輯
+- **題號重分配**: 基於視覺位置的題號分配
+
+#### **持續監控區域**
 1. **PDF生成流程**
    - 協調器工作流程: `utils/orchestration/pdf_orchestrator.py`
    - LaTeX編譯: `utils/latex/compiler.py`
-   - 題目分配: `utils/orchestration/question_distributor.py`
+   - 題目佈局處理: `utils/core/layout.py`
 
 2. **UI互動功能**
    - CategoryWidget模組化組件互動
@@ -134,24 +146,21 @@ class MyGenerator(QuestionGenerator):
    - Pydantic參數驗證
    - 圖形數據整合
 
-4. **圖形渲染系統**
-   - TikZ代碼生成正確性
-   - 參數模型驗證
-   - 複雜圖形渲染
-
 ### **已知注意事項**
 ```python
-# 1. 模組導入路徑 - 新舊並存
-from figures.params import PointParams        # ✅ 新架構 (推薦)
-from figures.params_models import PointParams # ✅ 向後兼容
+# 1. 模組導入路徑 - 現代化架構
+from figures.params import PointParams, CircleParams  # ✅ 新架構 (主要使用)
+from utils import get_logger, global_config            # ✅ 核心工具統一導入
 
 # 2. 日誌系統使用
-logger = get_logger(self.__class__.__name__)  # ✅ 標準做法
-logger.info("任務開始")                        # 詳細資訊
-logger.error(f"錯誤: {error}")                 # 錯誤記錄
+logger = get_logger(__name__)          # ✅ 模組級日誌器
+logger.info("任務開始")                # 詳細資訊
+logger.error(f"錯誤: {error}")         # 錯誤記錄
 
-# 3. 配置管理
-config = global_config.get_generator_config('trig')  # ✅ 統一配置
+# 3. 配置管理 - 統一使用 global_config
+debug_mode = global_config.debug_mode                    # ✅ 基本配置
+precision = global_config.tikz_precision                 # ✅ TikZ精度
+compiler = global_config.pdf_compiler                    # ✅ PDF編譯器
 ```
 
 ### **性能監控重點**
@@ -242,12 +251,42 @@ ls assets/style.qss data/categories.json
 4. **模組隔離**: 使用單元測試隔離問題模組
 5. **參考文檔**: 查閱 `docs/workflow.md` 了解系統設計
 
-## 🚨 **重要開發原則**
+## 🚨 **核心開發原則**
 
-**系統性問題解決方法論**
+### **1️⃣ 先討論計畫再修改程式原則**
 
+**絕對禁止盲目修改代碼**
+- 先討論計畫再修改程式，論證完成、鎖定真實問題前絕不亂改
+- 免得愈改愈錯，造成更多問題
+- 所有程式碼修改必須先制定詳細計畫
+- 計畫必須包含問題分析、修復策略、風險評估
+- 計畫確認後才能開始執行修改
+
+### **2️⃣ 工作計畫文檔命名規範**
+
+**中文檔名 + 前後綴格式**
+- 前綴：日期 (格式: YYYYMMDD)
+- 主檔名：中文具體命名，清楚描述計畫內容
+- 後綴：進度狀態 (研擬中/執行中/已完成/已暫停)
+
+**範例**:
+- `20250915_防參差佈局修復計畫_研擬中.md`
+- `20250916_UI組件重構方案_執行中.md`
+- `20250917_性能優化實施策略_已完成.md`
+
+### **3️⃣ 工作計畫示例代碼抽象化原則**
+
+**示例代碼要抽象化，不要太具體**
+- 避免影響之後AI實作的彈性
+- 提供概念性示例，保留實作細節的自由度
+- 重點在於說明邏輯流程和架構設計
+- 具體實作細節在執行階段再確定
+
+### **4️⃣ 系統性問題解決方法論**
+
+**八步驟問題解決流程**
 1. **定位可能的問題**: 主動搜尋和識別潛在問題點
-2. **論證問題**: 分析問題的根本原因和影響範圍  
+2. **論證問題**: 分析問題的根本原因和影響範圍
 3. **確認問題**: 通過測試和驗證確定問題的具體表現
 4. **提出解決方案**: 制定完整的修復策略
 5. **確認方案可行性**: 評估解決方案不會造成新問題
@@ -255,15 +294,17 @@ ls assets/style.qss data/categories.json
 7. **建立防範制度**: 形成不會再產生類似問題的機制
 8. **執行解決**: 最後才著手實際修復
 
-**形成完整計畫檔案並確認前不修改代碼**
+### **5️⃣ 計畫驅動開發原則**
 
-- 所有程式碼修改必須先制定詳細計畫
-- 計畫必須包含問題分析、修復策略、風險評估
-- 計畫確認後才能開始執行修改
-- 避免盲目修改造成更多問題
+**形成完整計畫檔案並確認前不修改代碼**
+- 計畫文檔必須詳細到可以指導具體實作
+- 包含測試驗證方案和成功標準定義
+- 風險評估和回滾機制準備
+- 所有關鍵決策都要有明確的論證過程
 
 ---
 
-**專案狀態**: 🏆 現代化重構完成，進入穩定化階段  
-**開發重點**: Debug、優化、完善用戶體驗  
+**專案狀態**: 🔧 防參差佈局修復進行中，基於完整計畫驅動開發
+**開發重點**: 系統性Bug修復、優化、完善用戶體驗
 **品質目標**: 生產就緒的高品質數學測驗生成系統
+**當前計畫**: `20250915_防參差佈局修復計畫_研擬中.md`
