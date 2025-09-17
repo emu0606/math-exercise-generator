@@ -293,12 +293,12 @@ class PDFOrchestrator:
         
         # 生成答案 LaTeX
         contents['answers'] = latex_generator.generate_answer_tex(
-            ordered_questions, content_config.test_title, content_config.questions_per_round
+            layout_results, content_config.test_title, content_config.questions_per_round
         )
         
         # 生成詳解 LaTeX
         contents['explanations'] = latex_generator.generate_explanation_tex(
-            ordered_questions, content_config.test_title, content_config.questions_per_round
+            layout_results, content_config.test_title, content_config.questions_per_round
         )
         
         return contents

@@ -119,12 +119,12 @@ class CircleGenerator(FigureGenerator):
         
         # 提取參數並使用新架構的幾何類型
         radius = validated_params.radius
-        center = Point(*validated_params.center) if hasattr(validated_params, 'center') else Point(0, 0)
+        center = Point(*validated_params.center)
         center_x, center_y = center.x, center.y
-        fill = validated_params.fill
-        fill_color = validated_params.fill_color
-        line_color = validated_params.line_color
-        line_style = validated_params.line_style
+        fill = validated_params.fill_color is not None
+        fill_color = validated_params.fill_color or 'white'
+        line_color = validated_params.color
+        line_style = 'solid'  # 使用預設值
         line_width = validated_params.line_width
         
         # 生成 TikZ 代碼

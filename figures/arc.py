@@ -123,17 +123,23 @@ class ArcGenerator(FigureGenerator):
         # 使用新架構的幾何計算功能
         center = Point(*validated_params.center)
         radius = validated_params.radius
-        start_angle_rad = validated_params.start_angle_rad
-        end_angle_rad = validated_params.end_angle_rad
-        
-        # 將弧度轉換為度數供 TikZ 使用
-        start_deg = math.degrees(start_angle_rad)
-        end_deg = math.degrees(end_angle_rad)
+        start_angle_deg = validated_params.start_angle
+        end_angle_deg = validated_params.end_angle
+
+        # 將度數轉換為弧度供計算使用
+        start_angle_rad = math.radians(start_angle_deg)
+        end_angle_rad = math.radians(end_angle_deg)
 
         # 繪製選項處理
-        draw_options_str = validated_params.draw_options or ""
-        if draw_options_str:
-            draw_options_str = f"[{draw_options_str}]"
+        color = validated_params.color
+        line_width = validated_params.line_width
+        arrow = validated_params.arrow
+
+        # 構建draw選項
+        draw_options = [color, line_width]
+        if arrow:
+            draw_options.append(arrow)
+        draw_options_str = f"[{', '.join(draw_options)}]"
         
         # 使用 Point 類型計算弧的起點座標
         start_point_x = center.x + radius * math.cos(start_angle_rad)
@@ -144,13 +150,13 @@ class ArcGenerator(FigureGenerator):
         tikz_p_start = start_point.to_tikz()
         
         # 使用 :.7g 格式化度數和半徑，避免不必要的小數位
-        tikz_start_deg = f"{start_deg:.7g}"
-        tikz_end_deg = f"{end_deg:.7g}"
+        tikz_start_deg = f"{start_angle_deg:.7g}"
+        tikz_end_deg = f"{end_angle_deg:.7g}"
         tikz_radius = f"{radius:.7g}"
 
         # 生成 TikZ arc 命令
         tikz_code = f"\\draw{draw_options_str} {tikz_p_start} arc ({tikz_start_deg}:{tikz_end_deg}:{tikz_radius});"
-        
+
         logger.debug(f"生成圓弧 TikZ 代碼: 中心{center.to_tikz()}, 角度{tikz_start_deg}°-{tikz_end_deg}°")
         
         return tikz_code

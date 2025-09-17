@@ -290,12 +290,10 @@ class QuestionDistributor:
         Returns:
             隨機排序的題目列表
         """
-        # 先打亂獲得基本隨機性，再按size+topic排序確保秩序
-        sorted_questions = questions.copy()
-        random.shuffle(sorted_questions)  # 第一層隨機
-        sorted_questions.sort(key=lambda q: (q.get('size', 1), q.get('topic', '')))  # 分層秩序
-        logger.debug("使用隨機分配策略 (隨機中帶點秩序)")
-        return sorted_questions
+        shuffled = questions.copy()
+        random.shuffle(shuffled)
+        logger.debug("使用隨機分配策略")
+        return shuffled
     
     def _balanced_distribution(self, questions: List[Dict[str, Any]], 
                              rounds: int, questions_per_round: int) -> List[Dict[str, Any]]:
@@ -346,8 +344,8 @@ class QuestionDistributor:
                         question = topic_groups[backup_topic].pop(0)
                         round_questions.append(question)
             
-            # 回合內排序：size優先，topic次要 (隨機中帶點秩序)
-            round_questions.sort(key=lambda q: (q.get('size', 1), q.get('topic', '')))
+            # 打亂本回合內的題目順序
+            random.shuffle(round_questions)
             ordered_questions.extend(round_questions)
         
         return ordered_questions

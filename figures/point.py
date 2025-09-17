@@ -39,7 +39,7 @@ from . import register_figure_generator
 from .params import PointParams
 
 # 使用重構後的參數模型
-# from .params_models import PointParams
+# 已遷移到新架構: from .params import PointParams
 
 @register_figure_generator
 class PointGenerator(FigureGenerator):

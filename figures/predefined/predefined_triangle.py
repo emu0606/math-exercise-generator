@@ -46,7 +46,7 @@ from pydantic import ValidationError
 
 from ..base import FigureGenerator
 from .. import register_figure_generator, get_figure_generator
-from ..params_models import (
+from ..params import (
     PredefinedTriangleParams, PointTuple,
     LabelParams, ArcParams, BasicTriangleParams # For constructing sub-figure params
 )

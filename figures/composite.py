@@ -124,7 +124,7 @@ class CompositeFigureGenerator(FigureGenerator):
             logger.debug(f"複合圖形參數驗證成功: {len(validated_params.sub_figures)} 個子圖形, 變體={validated_params.variant}")
         except ValidationError as e:
             logger.error(f"複合圖形參數驗證失敗: {str(e)}")
-            raise ValidationError(f"複合圖形參數驗證失敗: {str(e)}", e.raw_errors)
+            raise ValueError(f"複合圖形參數驗證失敗: {str(e)}")
         
         # 收集所有需要的 TikZ 庫
         tikz_libraries = set(["positioning"])  # 預設需要 positioning 庫

@@ -40,14 +40,14 @@
         
         label_style = LabelStyleConfig(color='blue', font_size=r'\\large')
 
-向後兼容性：
-    原有的導入方式依然有效::
-    
-        # 舊方式（仍然支援）
-        from figures.params_models import UnitCircleParams
-        
-        # 新方式（推薦）
-        from figures.params import UnitCircleParams
+統一架構：
+    所有生成器使用統一的新架構::
+
+        # 統一導入方式
+        from figures.params import UnitCircleParams, CircleParams, CoordinateSystemParams
+
+        # 舊架構已移除（2025-09-16）
+        # from figures.params_models import UnitCircleParams  # 已不可用
 
 Note:
     - Day 2 重構完成：基礎架構、幾何參數、樣式系統已就緒

@@ -180,11 +180,11 @@ class LaTeXGenerator:
         
         return content
     
-    def generate_answer_tex(self, questions: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
+    def generate_answer_tex(self, layout_results: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
         """生成簡答頁 LaTeX 內容
-        
+
         Args:
-            questions: 題目列表
+            layout_results: 佈局結果列表
             test_title: 測驗標題
             questions_per_round: 每回題數
             
@@ -207,8 +207,8 @@ class LaTeXGenerator:
         current_round = -1
         items_in_current_row = 0 # 修改變數名以反映其用途
         items_per_row = 3 # 每行顯示的項目數
-        
-        for i, question in enumerate(questions):
+
+        for i, question in enumerate(layout_results):
             # 計算回數和回內題號
             if questions_per_round > 0:
                 round_num = (i // questions_per_round) + 1
@@ -260,11 +260,11 @@ class LaTeXGenerator:
         
         return content
     
-    def generate_explanation_tex(self, questions: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
+    def generate_explanation_tex(self, layout_results: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
         """生成詳解頁 LaTeX 內容
-        
+
         Args:
-            questions: 題目列表
+            layout_results: 佈局結果列表
             test_title: 測驗標題
             questions_per_round: 每回題數
             
@@ -286,7 +286,7 @@ class LaTeXGenerator:
         # 詳解內容，按回分組
         current_round = -1
         
-        for i, question in enumerate(questions):
+        for i, question in enumerate(layout_results):
             # 計算回數和回內題號
             if questions_per_round > 0:
                 round_num = (i // questions_per_round) + 1

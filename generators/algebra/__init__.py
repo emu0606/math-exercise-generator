@@ -12,22 +12,23 @@
 - DoubleRadicalSimplificationGenerator: 雙重根式化簡題目生成器
 
 主要特色：
-- 完整的 Pydantic 參數驗證系統
-- 智能的數學邏輯驗證和錯誤避免
-- 專業的 LaTeX 數學表達式格式化
-- 詳細的解題步驟解析
-- 可配置的難度和範圍控制
-- 完整的 Sphinx 文檔標準
+- 使用options.get()進行參數處理
+- Sympy生成標準LaTeX格式
+- 模版化詳解生成
+- 完整的異常處理機制
+- 智能的數學邏輯驗證
 
 Example:
     >>> from generators.algebra import DoubleRadicalSimplificationGenerator
-    >>> 
+    >>>
     >>> # 使用預設設定創建生成器
     >>> generator = DoubleRadicalSimplificationGenerator()
     >>> question = generator.generate_question()
     >>> print(question['question'])
     '化簡：$\\sqrt{14 - 6\\sqrt{5}}$'
-    >>> 
+    >>> print(question['grade'])
+    'G10S1'
+    >>>
     >>> # 使用自訂設定創建生成器
     >>> custom_generator = DoubleRadicalSimplificationGenerator({
     ...     'max_value': 20,
@@ -36,9 +37,8 @@ Example:
     >>> custom_question = custom_generator.generate_question()
     
 Note:
-    所有代數生成器都遵循新架構的設計原則，使用 sympy 等專業數學庫
-    確保數學正確性，並提供完整的教學價值。每個生成器都包含智能的
-    邊界條件處理，避免產生數學上無意義或過於簡單的題目。
+    代數生成器使用sympy確保數學正確性，包含完整的邊界條件處理，
+    避免產生無效或過於簡單的題目。
 """
 
 from utils import get_logger

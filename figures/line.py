@@ -143,7 +143,7 @@ class LineGenerator(FigureGenerator):
             validated_params = LineParams(**params)
         except ValidationError as e:
             logger.error(f"線段參數驗證失敗: {str(e)}")
-            raise ValidationError(f"線段參數驗證失敗: {str(e)}", e.raw_errors)
+            raise ValueError(f"線段參數驗證失敗: {str(e)}")
         
         # 使用新架構創建 Point 對象
         start_point = Point(validated_params.start_point[0], validated_params.start_point[1])

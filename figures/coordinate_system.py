@@ -115,16 +115,14 @@ class CoordinateSystemGenerator(FigureGenerator):
         # 使用新架構的參數模型驗證
         try:
             validated_params = CoordinateSystemParams(**params)
-            logger.debug(f"坐標系參數驗證成功: 範圍({validated_params.x_min},{validated_params.y_min}) 到 ({validated_params.x_max},{validated_params.y_max})")
+            logger.debug(f"坐標系參數驗證成功: 範圍{validated_params.x_range} x {validated_params.y_range}")
         except ValidationError as e:
             logger.error(f"坐標系參數驗證失敗: {str(e)}")
             raise ValidationError(f"坐標系參數驗證失敗: {str(e)}", e.raw_errors)
         
         # 提取參數並進行合理性檢查
-        x_min = validated_params.x_min
-        x_max = validated_params.x_max
-        y_min = validated_params.y_min
-        y_max = validated_params.y_max
+        x_min, x_max = validated_params.x_range
+        y_min, y_max = validated_params.y_range
         
         # 使用新架構驗證坐標範圍合理性
         if x_min >= x_max or y_min >= y_max:
@@ -133,12 +131,11 @@ class CoordinateSystemGenerator(FigureGenerator):
             raise ValueError(error_msg)
             
         show_grid = validated_params.show_grid
-        show_labels = validated_params.show_labels
-        color = validated_params.color
+        show_axes_labels = validated_params.show_axes_labels
+        axes_color = validated_params.axes_color
         grid_color = validated_params.grid_color
         x_label = validated_params.x_label
         y_label = validated_params.y_label
-        arrow_style = validated_params.arrow_style
         
         # 使用 Point 類型計算關鍵坐標
         origin = Point(0, 0)
@@ -160,27 +157,27 @@ class CoordinateSystemGenerator(FigureGenerator):
             tikz_content += f"\\draw[{grid_color}, step=1] {grid_min.to_tikz()} grid {grid_max.to_tikz()};\n"
         
         # 繪製坐標軸（使用 Point 類型的座標）
-        x_label_node = f" node[right] {{${x_label}$}}" if show_labels else ""
-        y_label_node = f" node[above] {{${y_label}$}}" if show_labels else ""
-        
-        tikz_content += f"\\draw[-{arrow_style}, {color}] {x_min_point.to_tikz()} -- {x_max_point.to_tikz()}{x_label_node};\n"
-        tikz_content += f"\\draw[-{arrow_style}, {color}] {y_min_point.to_tikz()} -- {y_max_point.to_tikz()}{y_label_node};\n"
-        
+        x_label_node = f" node[right] {{${x_label}$}}" if show_axes_labels else ""
+        y_label_node = f" node[above] {{${y_label}$}}" if show_axes_labels else ""
+
+        tikz_content += f"\\draw[-stealth, {axes_color}] {x_min_point.to_tikz()} -- {x_max_point.to_tikz()}{x_label_node};\n"
+        tikz_content += f"\\draw[-stealth, {axes_color}] {y_min_point.to_tikz()} -- {y_max_point.to_tikz()}{y_label_node};\n"
+
         # 繪製刻度（如果需要）
-        if show_labels:
+        if show_axes_labels:
             # X 軸刻度（使用 Point 類型確保精確度）
             for i in range(int(x_min) + 1, int(x_max)):
                 if i != 0:  # 跳過原點
                     tick_bottom = Point(i, -0.1)
                     tick_top = Point(i, 0.1)
-                    tikz_content += f"\\draw[{color}] {tick_bottom.to_tikz()} -- {tick_top.to_tikz()} node[below] {{${i}$}};\n"
+                    tikz_content += f"\\draw[{axes_color}] {tick_bottom.to_tikz()} -- {tick_top.to_tikz()} node[below] {{${i}$}};\n"
             
             # Y 軸刻度（使用 Point 類型確保精確度）
             for i in range(int(y_min) + 1, int(y_max)):
                 if i != 0:  # 跳過原點
                     tick_left = Point(-0.1, i)
                     tick_right = Point(0.1, i)
-                    tikz_content += f"\\draw[{color}] {tick_left.to_tikz()} -- {tick_right.to_tikz()} node[left] {{${i}$}};\n"
+                    tikz_content += f"\\draw[{axes_color}] {tick_left.to_tikz()} -- {tick_right.to_tikz()} node[left] {{${i}$}};\n"
         
         logger.debug(f"生成坐標系 TikZ 代碼: 範圍({x_min},{y_min})-({x_max},{y_max}), 網格={show_grid}")
         

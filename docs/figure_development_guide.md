@@ -104,7 +104,7 @@ from pydantic import BaseModel, Field, validator
 
 # 導入新架構的統一 API
 from utils import (
-    construct_triangle, get_centroid, tikz_coordinate,
+    construct_triangle, get_centroid, Point,
     global_config, get_logger
 )
 from utils.core.registry import registry
@@ -272,25 +272,25 @@ class MyFigureGenerator:
             
             # 繪製三角形
             tikz_lines.append(
-                f"\\draw {tikz_coordinate(triangle.A)} -- "
-                f"{tikz_coordinate(triangle.B)} -- "
-                f"{tikz_coordinate(triangle.C)} -- cycle;"
+                f"\\draw {triangle.A.to_tikz()} -- "
+                f"{triangle.B.to_tikz()} -- "
+                f"{triangle.C.to_tikz()} -- cycle;"
             )
-            
+
             # 標記頂點
-            tikz_lines.append(f"\\node[below left] at {tikz_coordinate(triangle.A)} {{A}};")
-            tikz_lines.append(f"\\node[below right] at {tikz_coordinate(triangle.B)} {{B}};")
-            tikz_lines.append(f"\\node[above] at {tikz_coordinate(triangle.C)} {{C}};")
-            
+            tikz_lines.append(f"\\node[below left] at {triangle.A.to_tikz()} {{A}};")
+            tikz_lines.append(f"\\node[below right] at {triangle.B.to_tikz()} {{B}};")
+            tikz_lines.append(f"\\node[above] at {triangle.C.to_tikz()} {{C}};")
+
             # 根據變體添加額外內容
             if figure_params.variant == "explanation" or figure_params.show_centroid:
                 # 計算並顯示質心
                 centroid = get_centroid(triangle)
                 tikz_lines.append(
-                    f"\\fill[red] {tikz_coordinate(centroid)} circle (2pt);"
+                    f"\\fill[red] {centroid.to_tikz()} circle (2pt);"
                 )
                 tikz_lines.append(
-                    f"\\node[above right, red] at {tikz_coordinate(centroid)} {{G}};"
+                    f"\\node[above right, red] at {centroid.to_tikz()} {{G}};"
                 )
             
             result = "\n".join(tikz_lines)
@@ -402,8 +402,7 @@ from utils import (
     get_incenter,           # 內心計算
     distance,               # 距離計算
     area_of_triangle,       # 面積計算
-    tikz_coordinate,        # 座標轉換
-    Point, Triangle         # 數據類型
+    Point, Triangle         # 數據類型 (Point.to_tikz()用於座標轉換)
 )
 
 # 構造三角形
@@ -413,8 +412,8 @@ triangle = construct_triangle("sss", side_a=3, side_b=4, side_c=5)
 centroid = get_centroid(triangle)
 incenter = get_incenter(triangle)
 
-# 生成 TikZ 座標
-coord_a = tikz_coordinate(triangle.A)  # 結果: (0.0,0.0)
+# 生成 TikZ 座標 (使用Point類的to_tikz方法)
+coord_a = triangle.A.to_tikz()  # 結果: "(0.0, 0.0)"
 ```
 
 ### 使用配置和日誌系統
@@ -469,7 +468,9 @@ class MyAdvancedGenerator:
 
 ### 1. 創建參數模型
 
-首先，在 `figures/params_models.py` 中定義新的預定義複合圖形參數模型：
+首先，在 `figures/params/` 目錄下定義新的預定義複合圖形參數模型。
+
+**推薦方式**: 在合適的參數模組中添加參數類，例如 `figures/params/shapes.py`：
 
 ```python
 class MyPredefinedCompositeParams(BaseFigureParams):
@@ -477,6 +478,12 @@ class MyPredefinedCompositeParams(BaseFigureParams):
     param1: float = 1.0
     param2: str = 'default'
     # 其他參數...
+```
+
+然後在 `figures/params/__init__.py` 中導出：
+
+```python
+from .shapes import MyPredefinedCompositeParams
 ```
 
 ### 2. 創建生成器類
@@ -495,7 +502,7 @@ from typing import Dict, Any, List
 from pydantic import ValidationError
 
 from ..base import FigureGenerator
-from ..params_models import MyPredefinedCompositeParams, CompositeParams, SubFigureParams, AbsolutePosition
+from ..params import MyPredefinedCompositeParams, CompositeParams, SubFigureParams, AbsolutePosition
 from .. import register_figure_generator, get_figure_generator
 
 @register_figure_generator
@@ -773,22 +780,36 @@ if __name__ == "__main__":
 
 完成開發後執行：
 ```bash
-# Phase 4 驗證命令
+# 統一架構後驗證命令
 
-# 1. 檢查圖形生成器註冊
-py -c "from figures import get_figure_generator; print('✅ 圖形生成器註冊系統正常')"
+# 1. 檢查統一架構參數模型導入
+py -c "from figures.params import PointParams, CircleParams, CoordinateSystemParams; print('✅ 統一架構參數模型正常')"
 
-# 2. 測試圖形生成功能  
-py -c "from figures import get_figure_generator; gen = get_figure_generator('my_triangle_figure')(); print('✅ 圖形生成器運行正常')"
+# 2. 驗證圖形生成器系統
+py -c "from figures import get_figure_generator; gen = get_figure_generator('circle')(); print('✅ 圖形生成器系統正常')"
 
-# 3. 檢查 Pydantic 參數驗證
-py -c "from my_figure_module import MyFigureParams; p = MyFigureParams(side_a=3, side_b=4, side_c=5); print('✅ Pydantic 驗證正常')"
+# 3. 測試Point.to_tikz()方法
+py -c "from utils import Point; p = Point(1.5, 2.0); print(f'✅ Point.to_tikz(): {p.to_tikz()}')"
 
-# 4. 執行測試
-py -m pytest tests/test_figures/ -v
+# 4. 驗證核心生成器功能
+py -c "
+generators = ['point', 'line', 'circle', 'coordinate_system', 'angle', 'arc', 'label', 'basic_triangle', 'unit_circle', 'composite', 'standard_unit_circle']
+from figures import get_figure_generator
+success = 0
+for name in generators:
+    try:
+        gen = get_figure_generator(name)()
+        success += 1
+    except:
+        pass
+print(f'✅ 生成器成功率: {success}/{len(generators)} = {success/len(generators)*100:.1f}%')
+"
 
-# 5. 檢查新架構工具整合
-py -c "from utils import get_logger, global_config; print('✅ 新架構工具正常')"
+# 5. 執行完整測試套件
+py -m pytest tests/test_utils/test_geometry/ -v
+
+# 6. 檢查架構統一後的整合狀態
+py -c "from utils import get_logger, global_config, Point; print('✅ 統一架構整合正常')"
 ```
 
 ## 📋 **長期維護計劃**

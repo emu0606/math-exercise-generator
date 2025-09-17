@@ -66,7 +66,11 @@ class GridManager:
         # 多頁面網格狀態: {page_number: [[bool]]}
         # True 表示該位置已被佔用
         self._grids: Dict[int, List[List[bool]]] = {}
-        
+
+        # 行高度鎖定狀態追蹤 {page: [row_heights]}
+        # -1表示未鎖定，1表示height=1鎖定，2表示height=2鎖定
+        self._row_locked_heights: Dict[int, List[int]] = {}
+
         logger.debug(f"初始化網格管理器: {grid_width}x{grid_height}")
     
     def create_page(self, page_number: int) -> None:
@@ -76,9 +80,12 @@ class GridManager:
             page_number: 頁碼
         """
         self._grids[page_number] = [
-            [False for _ in range(self.grid_width)] 
+            [False for _ in range(self.grid_width)]
             for _ in range(self.grid_height)
         ]
+
+        # 初始化行高度鎖定狀態
+        self._row_locked_heights[page_number] = [-1] * self.grid_height
         logger.debug(f"創建頁面 {page_number}")
     
     def can_place_at(self, page: int, row: int, col: int, 
@@ -136,8 +143,15 @@ class GridManager:
         for r in range(height_cells):
             for c in range(width_cells):
                 self._grids[page][row + r][col + c] = True
-        
+
+        # 更新行鎖定狀態
+        if page in self._row_locked_heights:
+            for r in range(row, row + height_cells):
+                if r < len(self._row_locked_heights[page]):
+                    self._row_locked_heights[page][r] = height_cells
+
         logger.debug(f"放置題目：頁面 {page}, 位置 ({row}, {col}), 大小 {width_cells}x{height_cells}")
+        logger.debug(f"行高度鎖定更新：頁面 {page}, 行 {row}-{row+height_cells-1} 鎖定為 height={height_cells}")
     
     def get_page_occupancy(self, page: int) -> float:
         """計算頁面佔用率
@@ -168,6 +182,48 @@ class GridManager:
             頁面是否存在
         """
         return page in self._grids
+
+    def get_row_locked_height(self, page: int, row: int) -> int:
+        """獲取指定行的已鎖定高度
+
+        Args:
+            page: 頁碼
+            row: 行號
+
+        Returns:
+            已鎖定的高度，-1表示未鎖定
+        """
+        if (page in self._row_locked_heights and
+            0 <= row < len(self._row_locked_heights[page])):
+            return self._row_locked_heights[page][row]
+        return -1
+
+    def can_place_with_height_check(self, page: int, row: int, col: int,
+                                   width_cells: int, height_cells: int) -> bool:
+        """檢查是否可以放置（包含行高度鎖定檢查）
+
+        Args:
+            page: 頁碼
+            row: 起始行
+            col: 起始列
+            width_cells: 寬度
+            height_cells: 高度
+
+        Returns:
+            是否可以放置
+        """
+        # 基本空間檢查
+        if not self.can_place_at(page, row, col, width_cells, height_cells):
+            return False
+
+        # 高度相容性檢查
+        for r in range(row, row + height_cells):
+            existing_height = self.get_row_locked_height(page, r)
+            if existing_height != -1 and existing_height != height_cells:
+                logger.debug(f"高度衝突：行 {r} 已鎖定為 height={existing_height}，無法放置 height={height_cells}")
+                return False
+
+        return True
 
 
 class PlacementStrategy:
@@ -206,39 +262,12 @@ class TopLeftStrategy(PlacementStrategy):
         
         for row in range(max_row):
             for col in range(max_col):
-                if grid_manager.can_place_at(page, row, col, width_cells, height_cells):
+                if grid_manager.can_place_with_height_check(page, row, col, width_cells, height_cells):
                     return (row, col)
         
         return None
 
 
-class CompactStrategy(PlacementStrategy):
-    """緊湊放置策略
-    
-    優先填滿每一行，減少空隙。
-    """
-    
-    def find_position(self, grid_manager: GridManager, page: int,
-                     width_cells: int, height_cells: int) -> Optional[Tuple[int, int]]:
-        """按緊湊原則尋找位置"""
-        max_row = grid_manager.grid_height - height_cells + 1
-        max_col = grid_manager.grid_width - width_cells + 1
-        
-        # 對於高度為1的題目，優先放置在有其他題目的行
-        if height_cells == 1:
-            # 先嘗試已有內容的行
-            for row in range(max_row):
-                row_has_content = any(
-                    grid_manager._grids[page][row][c] 
-                    for c in range(grid_manager.grid_width)
-                )
-                if row_has_content:
-                    for col in range(max_col):
-                        if grid_manager.can_place_at(page, row, col, width_cells, height_cells):
-                            return (row, col)
-        
-        # 如果沒有找到，使用標準左上優先策略
-        return TopLeftStrategy().find_position(grid_manager, page, width_cells, height_cells)
 
 
 class LayoutEngine:
@@ -269,7 +298,7 @@ class LayoutEngine:
         self.grid_height = grid_height
         
         # 設定放置策略
-        self.placement_strategy = placement_strategy or CompactStrategy()
+        self.placement_strategy = placement_strategy or TopLeftStrategy()
         
         # 網格管理器
         self.grid_manager = GridManager(grid_width, grid_height)
@@ -368,9 +397,12 @@ class LayoutEngine:
         
         # 收集統計資訊
         self._collect_layout_stats(layout_results, page_stats)
-        
+
+        # 根據佈局位置重新分配題號
+        layout_results = self._reassign_question_numbers(layout_results, questions_per_round)
+
         logger.info(f"佈局完成：{len(layout_results)} 道題目，{current_page} 頁")
-        
+
         return layout_results
     
     def _validate_questions(self, questions: List[Dict[str, Any]]) -> None:
@@ -554,9 +586,48 @@ class LayoutEngine:
         
         return stats
     
+    def _reassign_question_numbers(self, layout_results: List[Dict[str, Any]],
+                                  questions_per_round: int = 0) -> List[Dict[str, Any]]:
+        """根據佈局位置重新分配題號
+
+        確保題號遵循左上到右下的自然順序：
+        1. 頁面優先：第1頁 < 第2頁
+        2. 行優先：同頁面內，上行 < 下行
+        3. 列次要：同行內，左列 < 右列
+
+        Args:
+            layout_results: 佈局結果列表
+            questions_per_round: 每回題數，0表示不分回
+
+        Returns:
+            重新分配題號後的佈局結果
+        """
+        if not layout_results:
+            return layout_results
+
+        logger.debug("開始根據佈局位置重新分配題號")
+
+        # 按視覺位置排序：頁面 -> 行 -> 列
+        sorted_results = sorted(layout_results, key=lambda x: (x['page'], x['row'], x['col']))
+
+        # 重新分配題號
+        for i, item in enumerate(sorted_results):
+            if questions_per_round > 0:
+                round_num = (i // questions_per_round) + 1
+                question_num_in_round = (i % questions_per_round) + 1
+            else:
+                round_num = 1
+                question_num_in_round = i + 1
+
+            item['round_num'] = round_num
+            item['question_num_in_round'] = question_num_in_round
+
+        logger.info(f"題號重新分配完成：{len(sorted_results)} 道題目")
+        return sorted_results
+
     def reset(self) -> None:
         """重置佈局引擎狀態
-        
+
         清除所有頁面和統計資訊，準備進行新的佈局。
         """
         self.grid_manager = GridManager(self.grid_width, self.grid_height)

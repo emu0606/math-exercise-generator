@@ -143,10 +143,23 @@ class Point:
         
         return cls(float(point_tuple[0]), float(point_tuple[1]))
     
+    def to_tikz(self) -> str:
+        """轉換為TikZ座標格式
+
+        Returns:
+            str: TikZ格式的座標字串，例如 "(1.5, 2.0)"
+
+        Example:
+            >>> p = Point(1.5, 2.0)
+            >>> p.to_tikz()
+            '(1.5, 2.0)'
+        """
+        return f"({self.x}, {self.y})"
+
     def __str__(self) -> str:
         """字串表示"""
         return f"Point({self.x:.3f}, {self.y:.3f})"
-    
+
     def __repr__(self) -> str:
         """詳細字串表示"""
         return f"Point(x={self.x}, y={self.y})"

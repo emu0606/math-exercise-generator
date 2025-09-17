@@ -1,0 +1,231 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage{xeCJK}
+\usepackage[margin=1.8cm]{geometry}
+\usepackage{tikz}
+\usetikzlibrary{positioning, shadows, calc, arrows.meta, angles, quotes} % Added angles and quotes
+\usepackage{amsmath,amssymb}
+\usepackage{multicol}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage{mdframed} % mdframed 可能不再需要，但暫時保留以防萬一
+\usepackage[most]{tcolorbox} % 確保 tcolorbox 加載
+\usepackage{fontspec}
+\usepackage{lmodern}
+% \usepackage{wrapfig} % 移除 wrapfig
+
+% 設定字體
+\setCJKmainfont[
+  Path=./assets/fonts/,
+  Extension=.otf,
+  BoldFont=SourceHanSansTC-Bold
+]{SourceHanSansTC-Regular}
+
+% 設定英文和數字字體
+\setmainfont[
+  Path=./assets/fonts/,
+  Extension=.otf,
+  BoldFont=SourceHanSansTC-Bold
+]{SourceHanSansTC-Regular}
+
+% 設定等寬字體 (如果有)
+\setmonofont[
+  Path=./assets/fonts/,
+  Extension=.otf
+]{SourceHanSansTC-Regular}
+
+
+% 全局字體設置
+\renewcommand{\normalsize}{\fontsize{11pt}{15pt}\selectfont}
+\renewcommand{\large}{\fontsize{14pt}{18pt}\selectfont}
+\renewcommand{\Large}{\fontsize{16pt}{20pt}\selectfont}
+\renewcommand{\huge}{\fontsize{20pt}{24pt}\selectfont}
+
+
+% 設定頁面樣式
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[C]{\thepage}
+
+% 設定段落間距
+\setlength{\parskip}{0.5em}
+\setlength{\parindent}{0em}
+
+% 設定列表樣式
+\setlist[enumerate]{leftmargin=*,labelsep=0.5em,topsep=0.3em,itemsep=0.2em}
+
+% 定義顏色
+\definecolor{answerframe}{RGB}{120,120,120}
+\definecolor{answerback}{RGB}{248,248,248}
+\definecolor{explanationframe}{RGB}{70,130,180} % 保持顏色定義
+\definecolor{explanationback}{RGB}{240,248,255} % 保持顏色定義
+\definecolor{roundtitle}{RGB}{50,50,50}
+\definecolor{accent6}{RGB}{52,73,94} % Added accent color for question number box
+
+
+% Command for shadowed rounded rectangle question number
+\newcommand{\qnumShadowBox}[1]{%
+  \tikz[remember picture]{
+    \node[rectangle, rounded corners=3pt, fill=white, draw=accent6, drop shadow, inner sep=2pt] (qnum) {\bfseries #1};
+  }
+}
+
+% 設計5: 簡潔分隔線設計 (來自 testlatex5.tex) - 用於簡答頁
+\newcommand{\numberedAnswerLine}[2]{%
+  \begin{minipage}{0.3\textwidth} % 調整寬度以適應頁面
+    \begin{tikzpicture}
+      % 題號小方框
+      \draw[fill=lightgray, draw=darkgray!70] (0,0) rectangle (0.55,0.55);
+      \node[font=\small\bfseries] at (0.275,0.275) {#1};
+
+      % 答案與下劃線
+      \node[font=\large, anchor=west] at (0.8,0.275) {#2};
+      % 調整下劃線長度以匹配 minipage 寬度減去題號框和間距
+      \pgfmathsetlengthmacro{\linewidthcalc}{\linewidth - 0.8cm - 0.55cm} % 估算可用寬度
+      \draw[darkgray, line width=0.8pt] (0.8,-.2) -- +(\linewidthcalc,0); % 從答案左側開始繪製
+    \end{tikzpicture}
+    \vspace{0.6cm} % 項目之間的垂直間距
+  \end{minipage}%
+}
+
+% 設計5分隔線行 (來自 testlatex5.tex) - 用於簡答頁
+\newenvironment{answerRow}{%
+  \noindent\begin{minipage}{\textwidth} % 使用完整寬度
+    \centering % 讓 minipage 內的內容居中（如果 minipage 總寬度小於 textwidth）
+    \setlength{\lineskip}{1pt} % 調整行間距，根據需要
+    \setlength{\parskip}{0pt} % 移除段落間距
+    \raggedright % 讓 minipage 內的內容靠左對齊
+}{%
+  \end{minipage}
+  \vspace{0.2cm} % 行之間的垂直間距
+}
+
+% *** 修改：定義 explanationbox 樣式和命令 ***
+\tcbset{
+    explanationstyle/.style={
+        enhanced,
+        breakable=true, % 允許盒子跨欄/頁
+        colback=explanationback, % 使用預定義顏色
+        colframe=explanationframe, % 使用預定義顏色
+        arc=2mm,
+        boxrule=0.5pt,
+        fontupper=\fontsize{9pt}{11pt}\selectfont, % 設定內容字體
+        % 使用 tcolorbox 的標準間距，或根據需要調整
+        % before skip=1em, % 可選
+        % after skip=1em, % 可選
+        left=2mm, right=2mm, top=2mm, bottom=2mm % 內邊距
+    }
+}
+% 定義 explanationbox 命令以使用樣式
+\newcommand{\explanationbox}[2][]{% #1 for optional tcolorbox options
+  \begin{tcolorbox}[explanationstyle, #1]
+    #2
+  \end{tcolorbox}
+}
+
+% 回標題樣式
+\newcommand{\roundtitle}[1]{%
+    \begin{center}
+        \colorbox{roundtitle!10}{%
+            \begin{minipage}{0.95\textwidth}
+                \centering\large\textbf{\textcolor{roundtitle}{#1}}
+            \end{minipage}
+        }
+    \end{center}
+    \vspace{0.5em}
+}
+
+% 設定標題樣式
+\usepackage{titlesec}
+\titleformat{\subsection}
+  {\normalfont\large\bfseries}{\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{2em}{1em}
+
+% 設定標題
+\title{\huge 數學計算練習}
+\author{\large 數學測驗生成器}
+\date{\large \today}
+
+\begin{document}
+\noindent 第1回 \hfill \_\_\_月\_\_\_\_日 \hfill 姓名：\_\_\_\_\_\_\_\_\_
+
+\begin{center}
+\begin{tikzpicture}
+  % 題目 1
+  \draw[rounded corners=3pt, thick] (0.0, 0.0) rectangle (8.45, -2.457);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { 0.0 }) {\qnumShadowBox{1}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { 0.0+-0.5 }) {化簡：$\sqrt{26 + 8\sqrt{3}}$};
+
+  % 題目 2
+  \draw[rounded corners=3pt, thick] (8.95, 0.0) rectangle (17.4, -2.457);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { 0.0 }) {\qnumShadowBox{2}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { 0.0+-0.5 }) {化簡：$\sqrt{41 + 6\sqrt{46}}$};
+
+  % 題目 3
+  \draw[rounded corners=3pt, thick] (0.0, -2.957) rectangle (8.45, -5.414);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -2.957 }) {\qnumShadowBox{3}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -2.957+-0.5 }) {化簡：$\sqrt{14 - 2\sqrt{13}}$};
+
+  % 題目 4
+  \draw[rounded corners=3pt, thick] (8.95, -2.957) rectangle (17.4, -5.414);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -2.957 }) {\qnumShadowBox{4}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -2.957+-0.5 }) {化簡：$\sqrt{25 - 2\sqrt{66}}$};
+
+  % 題目 5
+  \draw[rounded corners=3pt, thick] (0.0, -5.914) rectangle (8.45, -8.370999999999999);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -5.914 }) {\qnumShadowBox{5}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -5.914+-0.5 }) {化簡：$\sqrt{14 - 6\sqrt{5}}$};
+
+  % 題目 6
+  \draw[rounded corners=3pt, thick] (8.95, -5.914) rectangle (17.4, -8.370999999999999);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -5.914 }) {\qnumShadowBox{6}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -5.914+-0.5 }) {化簡：$\sqrt{40 - 2\sqrt{399}}$};
+
+  % 題目 7
+  \draw[rounded corners=3pt, thick] (0.0, -8.870999999999999) rectangle (8.45, -11.328);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -8.870999999999999 }) {\qnumShadowBox{7}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -8.870999999999999+-0.5 }) {化簡：$\sqrt{23 + 2\sqrt{130}}$};
+
+  % 題目 8
+  \draw[rounded corners=3pt, thick] (8.95, -8.870999999999999) rectangle (17.4, -11.328);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -8.870999999999999 }) {\qnumShadowBox{8}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -8.870999999999999+-0.5 }) {化簡：$\sqrt{21 - 4\sqrt{26}}$};
+
+  % 題目 9
+  \draw[rounded corners=3pt, thick] (0.0, -11.828) rectangle (8.45, -14.285);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -11.828 }) {\qnumShadowBox{9}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -11.828+-0.5 }) {化簡：$\sqrt{33 + 2\sqrt{266}}$};
+
+  % 題目 10
+  \draw[rounded corners=3pt, thick] (8.95, -11.828) rectangle (17.4, -14.285);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -11.828 }) {\qnumShadowBox{10}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -11.828+-0.5 }) {化簡：$\sqrt{24 + 6\sqrt{7}}$};
+
+  % 題目 11
+  \draw[rounded corners=3pt, thick] (0.0, -14.785) rectangle (8.45, -17.242);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -14.785 }) {\qnumShadowBox{11}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -14.785+-0.5 }) {化簡：$\sqrt{23 + 8\sqrt{7}}$};
+
+  % 題目 12
+  \draw[rounded corners=3pt, thick] (8.95, -14.785) rectangle (17.4, -17.242);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -14.785 }) {\qnumShadowBox{12}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -14.785+-0.5 }) {化簡：$\sqrt{30 + 6\sqrt{21}}$};
+
+  % 題目 13
+  \draw[rounded corners=3pt, thick] (0.0, -17.741999999999997) rectangle (8.45, -20.198999999999998);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 0.0 }, { -17.741999999999997 }) {\qnumShadowBox{13}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 0.0+0.1 }, { -17.741999999999997+-0.5 }) {化簡：$\sqrt{17 + 4\sqrt{13}}$};
+
+  % 題目 14
+  \draw[rounded corners=3pt, thick] (8.95, -17.741999999999997) rectangle (17.4, -20.198999999999998);
+  \node[overlay, anchor=north west, inner sep=0] at ({ 8.95 }, { -17.741999999999997 }) {\qnumShadowBox{14}};
+  \node[anchor=north west, text width=8.25cm, inner sep=0.2cm] at ({ 8.95+0.1 }, { -17.741999999999997+-0.5 }) {化簡：$\sqrt{22 + 4\sqrt{30}}$};
+
+\end{tikzpicture}
+\end{center}
+\vfill
+\begin{center}
+\small{生成日期：2025-09-17}
+\end{center}
+\end{document}

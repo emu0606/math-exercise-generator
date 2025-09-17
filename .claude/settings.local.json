@@ -35,7 +35,8 @@
       "Read(/D:\\programing\\math\\CLAUDE.md)",
       "Read(/D:\\programing\\math\\progress.md)",
       "Read(/D:\\programing\\math\\README.md)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,9 +9,12 @@ from typing import Dict, Any, List
 import sympy
 from pydantic import ValidationError
 
+from utils import Point, get_logger
 from ..base import FigureGenerator
-from ..params_models import StandardUnitCircleParams, CompositeParams, SubFigureParams, AbsolutePosition
+from ..params import StandardUnitCircleParams, CompositeParams, SubFigureParams, AbsolutePosition
 from .. import register_figure_generator, get_figure_generator
+
+logger = get_logger(__name__)
 
 @register_figure_generator
 class StandardUnitCircleGenerator(FigureGenerator):
@@ -42,7 +45,8 @@ class StandardUnitCircleGenerator(FigureGenerator):
         try:
             validated_params = StandardUnitCircleParams(**params)
         except ValidationError as e:
-            raise ValidationError(f"標準單位圓參數驗證失敗: {str(e)}", e.raw_errors)
+            logger.error(f"標準單位圓參數驗證失敗: {str(e)}")
+            raise ValueError(f"標準單位圓參數驗證失敗: {str(e)}")
         
         # 構建 CompositeParams 實例
         composite_params = self._build_composite_params(validated_params)
@@ -169,12 +173,10 @@ class StandardUnitCircleGenerator(FigureGenerator):
                         id="radius",
                         type="line",
                         params={
-                            "x1": 0,
-                            "y1": 0,
-                            "x2": float(cos_value),
-                            "y2": float(sin_value),
+                            "start_point": [0, 0],
+                            "end_point": [float(cos_value), float(sin_value)],
                             "color": radius_color,
-                            "style": "thick",
+                            "width": "thick",
                             "variant": variant
                         },
                         position=AbsolutePosition(x=0, y=0)

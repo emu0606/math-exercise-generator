@@ -499,7 +499,7 @@
 
 **參數** (`PredefinedTriangleParams`):
 
-由於 `PredefinedTriangleParams` 包含大量可配置字段，這裡僅列出其主要結構和一些關鍵參數。詳細字段請參考源代碼中 `figures.params_models.PredefinedTriangleParams` 的定義。
+由於 `PredefinedTriangleParams` 包含大量可配置字段，這裡僅列出其主要結構和一些關鍵參數。詳細字段請參考源代碼中 `figures.params.PredefinedTriangleParams` 的定義。
 
 ```python
 {

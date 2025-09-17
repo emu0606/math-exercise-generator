@@ -9,9 +9,12 @@ import math
 from typing import Dict, Any
 from pydantic import ValidationError
 
+from utils import Point, get_logger
 from .base import FigureGenerator
-from .params_models import UnitCircleParams
+from .params import UnitCircleParams
 from . import register_figure_generator
+
+logger = get_logger(__name__)
 
 @register_figure_generator
 class UnitCircleGenerator(FigureGenerator):
@@ -41,7 +44,8 @@ class UnitCircleGenerator(FigureGenerator):
         try:
             validated_params = UnitCircleParams(**params)
         except ValidationError as e:
-            raise ValidationError(f"單位圓參數驗證失敗: {str(e)}", e.raw_errors)
+            logger.error(f"單位圓參數驗證失敗: {str(e)}")
+            raise ValueError(f"單位圓參數驗證失敗: {str(e)}")
         
         # 提取參數
         angle = validated_params.angle
