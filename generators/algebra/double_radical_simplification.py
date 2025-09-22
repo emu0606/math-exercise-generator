@@ -12,7 +12,6 @@ import math
 import random
 from typing import Dict, Any
 
-import sympy as sp
 from sympy import sqrt, expand, latex
 
 from utils import global_config, get_logger
@@ -54,8 +53,8 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         G10S1
     """
 
-    # LaTeX模版確保解釋步驟格式一致，結合優雅的有理無理分離
-    # 過度複雜化修正：使用 a×b 顯示實際運算過程，避免預計算參數
+    # LaTeX模版確保解釋步驟格式一致
+    # 使用 a×b 顯示實際運算過程，避免預計算參數
     EXPLANATION_TEMPLATES = {
         "addition": [
             "$\\sqrt{{{ordered_latex}}}$",
@@ -112,21 +111,16 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         return self._get_fallback_question()
 
     def _generate_core_logic(self) -> Dict[str, Any]:
-        """過度複雜化修正：核心數學邏輯生成，恢復舊版本的正確整體重試邏輯
+        """核心數學邏輯生成
 
         雙重根式化簡原理：
         給定答案形式 √a ± √b，透過平方展開得到題目形式
         (√a ± √b)² = a + b ± 2√(ab) = c ± d√e 形式的嵌套根式
 
-        關鍵修復：恢復完整的協調式決策流程，確保：
+        協調式決策流程確保：
         1. 數值選擇與運算類型的協調性
-        2. 完全平方數檢查的完整重試機制
-        3. 數學條件的正確性（如減法時 a ≥ b）
-
-        過度複雜化修正重點：
-        - 直接使用原始參數 a, b, is_addition 生成解釋
-        - 移除不必要的反向參數提取邏輯
-        - 保持數學正確性的同時簡化代碼結構
+        2. 完全平方數檢查避免教學價值流失
+        3. 數學條件正確性（減法時 a ≥ b）
         """
         # 整體重試邏輯：所有條件必須協調滿足
         for attempt in range(self.max_attempts):
@@ -167,13 +161,13 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
                 answer_expr = sqrt(a) + sqrt(b) if is_addition else sqrt(a) - sqrt(b)
                 squared_expr = expand(answer_expr**2)
 
-                # 使用優雅的有理無理分離生成格式一致的題目
+                # 生成完整題目字串（含前綴和包裝）
                 question = self._format_question_with_ordered_latex(squared_expr)
 
-                # 過度複雜化修正：直接使用原始參數構造答案，避免Sympy排序問題
+                # 使用原始參數構造答案，避免Sympy排序問題
                 answer = self._format_answer_with_original_params(a, b, is_addition)
 
-                # 過度複雜化修正：直接使用原有參數 a, b, is_addition，無需反向提取
+                # 使用原有參數 a, b, is_addition 生成解釋
                 explanation = self._build_explanation_with_original_params(squared_expr, answer_expr, a, b, is_addition)
 
                 self.logger.info(f"生成成功（第 {attempt + 1} 次嘗試）: a={a}, b={b}, 運算={'加法' if is_addition else '減法'}")
@@ -191,20 +185,17 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         return self._get_fallback_question()
 
 
-
-
-
     def _format_question_with_ordered_latex(self, squared_expr) -> str:
-        """使用as_coefficients_dict優雅地生成常數項在前的題目LaTeX
+        """生成完整題目字串，包含題目前綴和外層根號包裝
 
-        這是核心突破方法：利用Sympy原生的有理無理分離能力，
-        自動生成格式一致的題目，確保常數項始終在前。
+        職責：將Sympy表達式轉換為完整的題目LaTeX格式
+        用途：題目生成階段使用，輸出給學生的完整題目文字
 
         Args:
             squared_expr: Sympy展開的平方表達式
 
         Returns:
-            str: 格式化的題目字串，形如 "化簡：$\sqrt{c + d\sqrt{e}}$"
+            str: 完整題目字串，形如 "化簡：$\sqrt{c + d\sqrt{e}}$"
 
         Example:
             輸入: 2*sqrt(14) + 9
@@ -251,11 +242,10 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         return f"化簡：$\\sqrt{{{inner_latex}}}$"
 
     def _build_explanation_with_original_params(self, squared_expr, answer_expr, a: int, b: int, is_addition: bool) -> str:
-        """過度複雜化修正：直接使用原有參數，無需反向提取
+        """使用原有參數生成解釋步驟
 
         使用原始參數和模版生成解釋，避免複雜的反向解析。
-        結合舊版本的直接參數使用和新版本的模版化優勢，
-        既保持數學正確性又維持代碼的可維護性。
+        直接參數使用結合模版化，保持數學正確性和代碼可維護性。
 
         Args:
             squared_expr: Sympy展開的平方表達式
@@ -267,14 +257,14 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         Returns:
             str: 完整的解釋步驟LaTeX字串
         """
-        # 過度複雜化修正：直接使用 as_coefficients_dict() 創建優雅的有序LaTeX
+        # 取得純LaTeX內容用於模板填充（不含外層包裝）
         ordered_latex = self._create_ordered_latex_from_expr(squared_expr)
 
         # 選擇對應的模版
         template_key = "addition" if is_addition else "subtraction"
         template_steps = self.EXPLANATION_TEMPLATES[template_key]
 
-        # 過度複雜化修正：直接使用原始參數填充模版，移除預計算的 ab 參數
+        # 使用原始參數填充模版
         params = {
             'ordered_latex': ordered_latex,
             'a': a,
@@ -289,16 +279,18 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         return "\\\\[0.3em]".join(formatted_steps)
 
     def _create_ordered_latex_from_expr(self, squared_expr) -> str:
-        """過度複雜化修正：直接從表達式創建有序LaTeX，避免字串處理
+        """生成純LaTeX內容，不含包裝格式
 
-        使用 as_coefficients_dict() 優雅地生成常數項在前的LaTeX內容。
-        相比複雜的字串替換，直接從Sympy表達式生成更可靠。
+        職責：提取Sympy表達式的LaTeX內容部分，用於模板變數填充
+        用途：解釋步驟中的模板參數，需要不含外層包裝的純內容
+
+        使用as_coefficients_dict()確保常數項在前的標準順序
 
         Args:
             squared_expr: Sympy展開的平方表達式
 
         Returns:
-            str: 有序的LaTeX內容（不含外層sqrt包裝）
+            str: 純LaTeX內容，形如 "9 + 2\sqrt{14}"（不含外層sqrt包裝）
         """
         # 使用Sympy原生方法分離有理部和無理部
         coeff_dict = squared_expr.as_coefficients_dict()
@@ -338,27 +330,8 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
 
         return ''.join(latex_parts)
 
-    def _format_question_from_expr(self, question_expr) -> str:
-        """從Sympy表達式生成題目字串
-
-        使用Sympy表達式直接生成LaTeX格式，確保數學表達式的正確性。
-        相比手動參數拼接，Sympy自動處理複雜嵌套根式的LaTeX輸出。
-
-        Args:
-            question_expr: Sympy表達式物件（通常是sqrt(展開結果)）
-
-        Returns:
-            str: LaTeX格式的題目字串
-
-        Example:
-            >>> expr = sqrt(7 + 2*sqrt(10))
-            >>> _format_question_from_expr(expr)
-            "化簡：$\\sqrt{7 + 2\\sqrt{10}}$"
-        """
-        return f"化簡：${latex(question_expr)}$"
-
     def _format_answer_with_original_params(self, a: int, b: int, is_addition: bool) -> str:
-        """過度複雜化修正：直接使用原始參數構造答案，避免Sympy排序問題
+        """使用原始參數構造答案，避免Sympy排序問題
 
         基於數學教學習慣，確保答案格式為 √a ± √b (a ≥ b)。
         避免Sympy自動簡化和重排序導致的格式問題。
@@ -514,7 +487,7 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         Returns:
             Dict[str, Any]: 預設題目的完整資訊
         """
-        # 過度複雜化修正：直接使用簡單的預設參數
+        # 使用簡單的預設參數
         a, b = 9, 5  # 對應 √9 - √5 = 3 - √5
         is_addition = False
 
@@ -523,7 +496,7 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         squared_expr = expand(answer_expr**2)  # 9 + 5 - 6*sqrt(5) = 14 - 6*sqrt(5)
 
         return {
-            "question": self._format_question_with_ordered_latex(squared_expr),
+            "question": self._format_question_with_ordered_latex(squared_expr),  # 完整題目字串
             "answer": self._format_answer_with_original_params(a, b, is_addition),
             "explanation": self._build_explanation_with_original_params(squared_expr, answer_expr, a, b, is_addition),
             **self._get_standard_metadata()

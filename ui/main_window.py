@@ -36,8 +36,6 @@ from utils.core.registry import registry
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 ASSETS_DIR = os.path.join(BASE_DIR, 'assets')
 STYLE_SHEET_PATH = os.path.join(ASSETS_DIR, 'style.qss')
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-CATEGORIES_PATH = os.path.join(DATA_DIR, 'categories.json')
 
 
 class MathTestGenerator(QMainWindow):

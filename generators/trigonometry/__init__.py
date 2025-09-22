@@ -9,10 +9,9 @@
 和日誌系統，提供高品質的三角函數教學內容。
 
 可用的三角函數生成器：
-- TrigonometricFunctionGenerator: 三角函數值計算題目生成器
-- InverseTrigonometricFunctionGenerator: 反三角函數計算生成器  
+- TrigonometricFunctionGenerator: 統一三角函數值計算題目生成器（支援度數/弧度/混合模式）
+- InverseTrigonometricFunctionGenerator: 反三角函數計算生成器
 - TrigAngleConversionGenerator: 三角函數角度轉換生成器
-- TrigonometricFunctionGeneratorRadius: 弧度制三角函數生成器
 
 主要特色：
 - 完整的 Pydantic 參數驗證系統
@@ -54,16 +53,14 @@ logger = get_logger(__name__)
 from .TrigonometricFunctionGenerator import TrigonometricFunctionGenerator
 from .InverseTrigonometricFunctionGenerator import InverseTrigonometricFunctionGenerator  
 from .TrigAngleConversionGenerator import TrigAngleConversionGenerator
-from .TrigonometricFunctionGenerator_radius import TrigonometricFunctionGeneratorRadius
 
 # 記錄模組初始化
-logger.info("三角函數生成器模組初始化完成：4 個生成器已加載")
-logger.debug("可用生成器：度數制、反三角函數、角度轉換、弧度制")
+logger.info("三角函數生成器模組初始化完成：3 個生成器已加載")
+logger.debug("可用生成器：統一三角函數、反三角函數、角度轉換")
 
 # 公開 API
 __all__ = [
     'TrigonometricFunctionGenerator',
     'InverseTrigonometricFunctionGenerator',
-    'TrigAngleConversionGenerator',
-    'TrigonometricFunctionGeneratorRadius'
+    'TrigAngleConversionGenerator'
 ]

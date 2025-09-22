@@ -13,7 +13,7 @@ import math
 from typing import Dict, Any
 
 import sympy
-from sympy import sin, cos, tan, pi, sqrt, simplify, latex, rad, deg
+from sympy import latex, rad
 
 from utils import get_logger
 from ..base import QuestionGenerator, QuestionSize, register_generator
@@ -125,11 +125,7 @@ class InverseTrigonometricFunctionGenerator(QuestionGenerator):
                 "question": question_text,
                 "answer": answer,
                 "explanation": explanation,
-                "size": self.get_question_size(),
-                "difficulty": self.difficulty,  # 備用鍵值，固定值
-                "category": self.get_category(),
-                "subcategory": self.get_subcategory(),
-                "grade": "G10S2"  # 高一下學期（三角反函數適用年級）
+                **self._get_standard_metadata()
             }
 
         except Exception as e:
@@ -227,11 +223,28 @@ class InverseTrigonometricFunctionGenerator(QuestionGenerator):
                 "但 $\\sin^{-1}$ 的值域為 $[-90^\\circ, 90^\\circ]$\\\\[0.3em]"
                 "因此 $\\sin^{-1}(\\frac{1}{2}) = 30^\\circ$"
             ),
-            "size": self.get_question_size(),
-            "difficulty": self.difficulty,
-            "category": self.get_category(),
-            "subcategory": self.get_subcategory(),
-            "grade": "G10S2"
+            **self._get_standard_metadata()
+        }
+
+    def _get_standard_metadata(self) -> Dict[str, Any]:
+        """獲取標準元數據
+
+        提供PDF生成所需的完整元數據，包括尺寸、難度、分類等資訊。
+
+        Returns:
+            Dict[str, Any]: 包含標準元數據的字典
+        """
+        return {
+            "size": self.get_question_size(),  # SMALL - 三角反函數題目較簡潔
+            "difficulty": self.difficulty,     # 預設"MEDIUM"，可配置
+            "category": self.get_category(),   # "三角函數"
+            "subcategory": self.get_subcategory(),  # "反三角函數值計算"
+            "grade": "G10S2",  # 高一下學期（三角反函數適用年級）
+            # 預留圖形相關欄位，確保PDF相容
+            "figure_data_question": None,
+            "figure_data_explanation": None,
+            "figure_position": "right",
+            "explanation_figure_position": "right"
         }
 
     # 以下方法實現標準介面，確保與PDF生成系統相容
