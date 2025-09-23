@@ -525,7 +525,47 @@ class QuestionGenerator(ABC):
             attempts += 1
             
         raise ValueError(f"無法在 {max_attempts} 次嘗試內生成不在排除列表中的隨機浮點數")
-    
+
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Any]:
+        """取得生成器配置描述
+
+        返回此生成器支援的配置選項描述，預設為無配置。
+        子類別可覆寫此方法以描述其支援的配置選項。
+
+        Returns:
+            Dict[str, Any]: 配置描述字典，預設為空字典
+
+        Example:
+            >>> class MyGenerator(QuestionGenerator):
+            ...     @classmethod
+            ...     def get_config_schema(cls):
+            ...         return {
+            ...             "difficulty": {
+            ...                 "type": "select",
+            ...                 "options": ["easy", "hard"],
+            ...                 "default": "easy"
+            ...             }
+            ...         }
+        """
+        return {}
+
+    @classmethod
+    def has_config(cls) -> bool:
+        """檢查生成器是否需要配置
+
+        Returns:
+            bool: 如果生成器支援配置則返回 True，否則返回 False
+
+        Example:
+            >>> QuestionGenerator.has_config()
+            False
+            >>> # 假設 MyGenerator 有配置
+            >>> MyGenerator.has_config()
+            True
+        """
+        return bool(cls.get_config_schema())
+
     @classmethod
     def register(cls) -> None:
         """註冊生成器到中央系統

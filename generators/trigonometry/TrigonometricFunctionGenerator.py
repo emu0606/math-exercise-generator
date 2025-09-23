@@ -166,23 +166,42 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
         """
         super().__init__(options)
         self.logger = get_logger(self.__class__.__name__)
-        options = options or {}
 
-        # 難度通過函數數量控制：normal避開複雜函數，hard包含全部6個函數
-        difficulty = options.get("difficulty", "normal")
-        self.functions = [sin, cos, tan, cot, sec, csc] if difficulty == "hard" else [sin, cos, tan]
+        # 接收和處理配置
+        config = options or {}
+        if config:
+            self.logger.info(f"三角函數生成器接收配置: {config}")
+
+        # 使用function_scope替代difficulty，更清楚表達意圖
+        function_scope = config.get("function_scope", "basic")
+        if function_scope not in ["basic", "extended"]:
+            self.logger.warning(f"無效的function_scope: {function_scope}，使用預設值basic")
+            function_scope = "basic"
+
+        # 根據配置設置函數範圍
+        if function_scope == "extended":
+            self.functions = [sin, cos, tan, cot, sec, csc]
+            self.logger.info("使用擴展函數模式(6函數)")
+        else:
+            self.functions = [sin, cos, tan]
+            self.logger.info("使用基礎函數模式(3函數)")
 
         # 使用所有特殊角度，確保教學完整性和系統穩定性
         self.angles_degrees = [0, 30, 45, 60, 90, 120, 135, 150, 180,
                               210, 225, 240, 270, 300, 315, 330, 360]
 
         # 角度顯示模式：支援degree/radian/mixed三種模式
-        self.angle_mode = options.get("angle_mode", "degree")
+        angle_mode = config.get("angle_mode", "degree")
+        if angle_mode not in ["degree", "radian", "mixed"]:
+            self.logger.warning(f"無效的angle_mode: {angle_mode}，使用預設值degree")
+            angle_mode = "degree"
+
+        self.angle_mode = angle_mode
 
         # 預建構三角函數值查詢表，優化計算效率
         self.trig_values = self._build_unified_trig_table()
 
-        self.logger.info(f"統一三角函數生成器初始化完成 - 模式: {self.angle_mode}, 難度: {difficulty}")
+        self.logger.info(f"統一三角函數生成器初始化完成 - 模式: {self.angle_mode}, 函數範圍: {function_scope}")
 
     def _is_undefined(self, func: Any, angle_deg: int) -> bool:
         """數學常識驅動的未定義值判斷器

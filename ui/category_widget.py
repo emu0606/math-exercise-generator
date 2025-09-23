@@ -574,6 +574,13 @@ class CategoryWidget(QWidget):
                 
                 topic_name = f"{parent_cb.text()}/{sub_cb.text()}"
                 count = sub_spin.value()
-                selected_data.append({"topic": topic_name, "count": count})
+                # 建立基本數據
+                topic_data = {"topic": topic_name, "count": count}
+
+                # 添加配置收集 - 固定配置策略
+                if "三角函數值計算" in topic_name:
+                    topic_data["config"] = {"function_scope": "basic"}
+
+                selected_data.append(topic_data)
                 
         return selected_count, total_questions, selected_data

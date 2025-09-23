@@ -99,6 +99,7 @@ class QuestionGenerator:
         for item in selected_data:
             topic = item.get('topic')
             count = item.get('count', 0)
+            config = item.get('config', {})
             
             if not topic or count <= 0:
                 logger.warning(f"跳過無效的題型項目: {item}")
@@ -124,7 +125,7 @@ class QuestionGenerator:
             for i in range(count):
                 try:
                     # 實際調用生成器生成題目
-                    generator_instance = generator()  # 實例化生成器
+                    generator_instance = generator(config)  # 實例化生成器並傳遞配置
                     question_result = generator_instance.generate_question()  # 調用生成方法
                     
                     # 構建完整的題目數據結構
