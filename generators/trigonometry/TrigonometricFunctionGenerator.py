@@ -562,3 +562,44 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
             int: 題目大小（QuestionSize.SMALL = 1）
         """
         return QuestionSize.SMALL.value
+
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Dict[str, Any]]:
+        """取得三角函數生成器配置描述
+
+        定義用戶可調整的配置選項，UI系統將自動生成對應控件。
+        支援函數範圍和角度模式的動態配置，提升教學靈活性。
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 配置選項描述字典
+
+        Example:
+            >>> schema = TrigonometricFunctionGenerator.get_config_schema()
+            >>> schema['function_scope']['options']
+            ['basic', 'extended']
+            >>> schema['angle_mode']['default']
+            'degree'
+
+        Note:
+            配置選項說明：
+            - function_scope: 控制可用函數範圍，basic限制在教學基礎函數
+            - angle_mode: 決定題目中角度的顯示格式，支援混合模式
+        """
+        return {
+            "function_scope": {
+                "type": "select",
+                "label": "函數範圍",
+                "default": "basic",
+                "options": ["basic", "extended"],
+                # 說明基本與擴展範圍的差異，幫助教師選擇適合的教學內容
+                "description": "basic(sin,cos,tan) vs extended(+cot,sec,csc)"
+            },
+            "angle_mode": {
+                "type": "select",
+                "label": "角度模式",
+                "default": "degree",
+                "options": ["degree", "radian", "mixed"],
+                # 解釋各模式的教學用途，指導教師根據教學進度選擇
+                "description": "degree(角度制) radian(弧度制) mixed(混合)"
+            }
+        }
