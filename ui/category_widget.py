@@ -12,7 +12,8 @@ from PyQt5.QtCore import Qt, QSize, pyqtSignal
 
 from ui.utils import load_icon
 from utils.ui import ConfigUIFactory, ConfigValueCollector
-from utils import get_logger
+from utils import get_logger
+from utils.core.registry import registry
 
 class CategoryWidget(QWidget):
     """類別選擇元件，用於顯示和管理題型類別和子類別"""
@@ -584,26 +585,31 @@ class CategoryWidget(QWidget):
         return True
         
     def _create_config_ui_for_topic(self, topic_name: str):
-        """為指定題型檢測並創建配置UI
+        """使用註冊系統統一查詢配置資訊
 
-        動態檢測生成器是否需要配置，需要時自動生成UI控件。
-        失敗時返回None，不影響基本功能，確保系統穩定性。
+        利用註冊系統的配置資訊查詢，移除硬編碼的生成器匹配邏輯。
+        topic_name格式已經是 "category/subcategory"，直接使用。
 
         Args:
-            topic_name: 題型名稱，用於查找對應的生成器類
+            topic_name: 題型名稱，格式為 "category/subcategory"
 
         Returns:
             QWidget: 配置UI控件，或None（無配置需求或檢測失敗）
         """
         try:
-            # 解析題型名稱獲取生成器類別
-            generator_class = self._get_generator_class_by_name(topic_name)
-            if not generator_class or not generator_class.has_config():
+            # 解析topic名稱：現有格式已經正確 "category/subcategory"
+            if "/" not in topic_name:
                 return None
 
-            # 使用ConfigUIFactory自動生成UI，避免手動控件創建
-            schema = generator_class.get_config_schema()
-            config_widget = self.config_factory.create_widget_from_schema(schema)
+            category, subcategory = topic_name.split("/", 1)
+
+            # 使用註冊系統統一查詢：替代硬編碼匹配
+            config_info = registry.get_generator_with_config_info(category, subcategory)
+            if not config_info or not config_info['has_config']:
+                return None
+
+            # 使用ConfigUIFactory自動生成UI：維持現有工廠模式
+            config_widget = self.config_factory.create_widget_from_schema(config_info['config_schema'])
 
             # 儲存配置控件的引用供後續值收集使用
             self.config_widgets[topic_name] = config_widget
@@ -615,35 +621,6 @@ class CategoryWidget(QWidget):
             self.logger.warning(f"為{topic_name}創建配置UI失敗: {e}")
             return None
 
-    def _get_generator_class_by_name(self, topic_name: str):
-        """根據題型名稱查找對應的生成器類
-
-        通過生成器註冊系統查找指定題型的生成器類別。
-        暫時使用簡單的名稱匹配，未來可擴展為更複雜的映射。
-
-        Args:
-            topic_name: 題型名稱
-
-        Returns:
-            Type: 生成器類別，找不到時返回None
-        """
-        try:
-            # 根據題型名稱匹配生成器
-            if "三角函數值計算" in topic_name:
-                from generators.trigonometry.TrigonometricFunctionGenerator import TrigonometricFunctionGenerator
-                return TrigonometricFunctionGenerator
-
-            # 未來可以加入更多生成器的匹配邏輯
-            return None
-
-        except ImportError as e:
-            # 生成器模組導入失敗，記錄具體錯誤
-            self.logger.error(f"生成器導入失敗: {e}")
-            return None
-        except Exception as e:
-            # 其他未預期錯誤
-            self.logger.warning(f"查找生成器類別失敗: {e}")
-            return None
 
     def _collect_config_for_topic(self, topic_name: str):
         """動態收集指定題型的配置值
@@ -668,12 +645,16 @@ class CategoryWidget(QWidget):
             return {}
 
         try:
-            # 獲取對應的配置描述
-            generator_class = self._get_generator_class_by_name(topic_name)
-            if not generator_class:
+            # 解析topic名稱並使用註冊系統查詢
+            if "/" not in topic_name:
                 return {}
 
-            schema = generator_class.get_config_schema()
+            category, subcategory = topic_name.split("/", 1)
+            config_info = registry.get_generator_with_config_info(category, subcategory)
+            if not config_info or not config_info['has_config']:
+                return {}
+
+            schema = config_info['config_schema']
 
             # 使用ConfigValueCollector收集配置值
             return self.config_collector.collect_values(config_widget, schema)
@@ -789,13 +770,15 @@ class CategoryWidget(QWidget):
         # 修改確定按鈕邏輯：關閉前收集配置
         def on_accept():
             try:
-                # 獲取生成器schema
-                generator_class = self._get_generator_class_by_name(topic_name)
-                if generator_class:
-                    schema = generator_class.get_config_schema()
-                    # 收集並快取配置值
-                    config_values = self.config_collector.collect_values(config_ui, schema)
-                    self.config_values[topic_name] = config_values
+                # 使用註冊系統查詢配置schema
+                if "/" in topic_name:
+                    category, subcategory = topic_name.split("/", 1)
+                    config_info = registry.get_generator_with_config_info(category, subcategory)
+                    if config_info and config_info['has_config']:
+                        schema = config_info['config_schema']
+                        # 收集並快取配置值
+                        config_values = self.config_collector.collect_values(config_ui, schema)
+                        self.config_values[topic_name] = config_values
                     self.logger.debug(f"已快取{topic_name}配置: {config_values}")
 
                     # 更新按鈕tooltip以反映新配置
