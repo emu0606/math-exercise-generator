@@ -7,10 +7,12 @@
 
 import random
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QFrame, 
-                             QCheckBox, QPushButton, QSpinBox, QMessageBox)
+                             QCheckBox, QPushButton, QSpinBox, QMessageBox, QDialog)
 from PyQt5.QtCore import Qt, QSize, pyqtSignal
 
-from ui.utils import load_icon
+from ui.utils import load_icon
+from utils.ui import ConfigUIFactory, ConfigValueCollector
+from utils import get_logger
 
 class CategoryWidget(QWidget):
     """類別選擇元件，用於顯示和管理題型類別和子類別"""
@@ -29,7 +31,14 @@ class CategoryWidget(QWidget):
         
         # 儲存參考
         self.category_widgets = []  # 儲存元組: (cat_frame, cat_checkbox, arrow_btn, subcat_container)
-        self.subcategory_widgets = []  # 儲存元組: (subcat_frame, subcat_checkbox, subcat_spinbox, parent_checkbox)
+        self.subcategory_widgets = []  # 儲存元組: (subcat_frame, subcat_checkbox, subcat_spinbox, parent_checkbox)
+
+        # 初始化配置UI工具
+        self.logger = get_logger(self.__class__.__name__)
+        self.config_factory = ConfigUIFactory()
+        self.config_collector = ConfigValueCollector()
+        self.config_widgets = {}  # 儲存配置UI控件: {topic_name: config_widget}
+        self.config_values = {}   # 快取配置值: {topic_name: config_dict}
         
     def load_icons(self):
         """載入所有需要的圖示"""
@@ -137,7 +146,7 @@ class CategoryWidget(QWidget):
         subcat_frame.setObjectName("subcategoryFrame")
 
         subcat_layout = QHBoxLayout(subcat_frame)
-        subcat_layout.setContentsMargins(8, 3, 8, 3)
+        subcat_layout.setContentsMargins(24, 3, 8, 3)  # 增加左縮排，強化視覺層級
 
         # 建立子類別勾選框 - 明確設置初始狀態為未勾選
         checkbox = QCheckBox(subcat_name)
@@ -158,9 +167,15 @@ class CategoryWidget(QWidget):
 
         subcat_layout.addWidget(checkbox)
         subcat_layout.addStretch()
+        # 統一配置按鈕佔位 - 確保所有數量框對齊
+        config_placeholder = QWidget()
+        config_placeholder.setFixedSize(28, 28)
+        config_placeholder.setObjectName("configPlaceholder")
+        subcat_layout.addWidget(config_placeholder)
+
         subcat_layout.addWidget(spinbox)
 
-        return subcat_frame, checkbox, spinbox
+        return subcat_frame, checkbox, spinbox, config_placeholder
         
     def populate_categories(self, categories_data):
         """填充類別和子類別數據
@@ -187,8 +202,18 @@ class CategoryWidget(QWidget):
 
             # 填充子類別
             for subcat in category["subcategories"]:
-                subcat_frame, subcat_checkbox, subcat_spinbox = self.create_subcategory_widget(subcat)
-                subcat_layout.addWidget(subcat_frame)
+                subcat_frame, subcat_checkbox, subcat_spinbox, config_placeholder = self.create_subcategory_widget(subcat)
+                subcat_layout.addWidget(subcat_frame)
+
+                # 檢測並創建配置UI - 替換佔位符為實際按鈕
+                full_topic_name = f"{category['name']}/{subcat}"  # 使用完整格式與get_selected_data保持一致
+                config_ui = self._create_config_ui_for_topic(full_topic_name)
+                if config_ui:
+                    config_btn = self._create_config_button(config_ui, full_topic_name)
+                    # 替換佔位符為實際配置按鈕
+                    subcat_frame_layout = subcat_frame.layout()
+                    subcat_frame_layout.replaceWidget(config_placeholder, config_btn)
+                    config_placeholder.deleteLater()  # 清理佔位符
 
                 # 儲存子類別元件資訊，包含父類別勾選框的參考
                 subcat_widget_info = (subcat_frame, subcat_checkbox, subcat_spinbox, cat_checkbox)
@@ -241,7 +266,8 @@ class CategoryWidget(QWidget):
         """清空所有類別和子類別"""
         # 清空類別元件列表
         self.category_widgets.clear()
-        self.subcategory_widgets.clear()
+        self.subcategory_widgets.clear()
+        self.config_widgets.clear()  # 清理配置控件引用，避免記憶體洩漏
         
         # 清空佈局
         while self.categories_layout.count():
@@ -557,6 +583,241 @@ class CategoryWidget(QWidget):
         self.categoryChanged.emit()  # 發出信號通知變更
         return True
         
+    def _create_config_ui_for_topic(self, topic_name: str):
+        """為指定題型檢測並創建配置UI
+
+        動態檢測生成器是否需要配置，需要時自動生成UI控件。
+        失敗時返回None，不影響基本功能，確保系統穩定性。
+
+        Args:
+            topic_name: 題型名稱，用於查找對應的生成器類
+
+        Returns:
+            QWidget: 配置UI控件，或None（無配置需求或檢測失敗）
+        """
+        try:
+            # 解析題型名稱獲取生成器類別
+            generator_class = self._get_generator_class_by_name(topic_name)
+            if not generator_class or not generator_class.has_config():
+                return None
+
+            # 使用ConfigUIFactory自動生成UI，避免手動控件創建
+            schema = generator_class.get_config_schema()
+            config_widget = self.config_factory.create_widget_from_schema(schema)
+
+            # 儲存配置控件的引用供後續值收集使用
+            self.config_widgets[topic_name] = config_widget
+
+            return config_widget
+
+        except Exception as e:
+            # 配置UI生成失敗不影響基本功能，但需要記錄錯誤
+            self.logger.warning(f"為{topic_name}創建配置UI失敗: {e}")
+            return None
+
+    def _get_generator_class_by_name(self, topic_name: str):
+        """根據題型名稱查找對應的生成器類
+
+        通過生成器註冊系統查找指定題型的生成器類別。
+        暫時使用簡單的名稱匹配，未來可擴展為更複雜的映射。
+
+        Args:
+            topic_name: 題型名稱
+
+        Returns:
+            Type: 生成器類別，找不到時返回None
+        """
+        try:
+            # 根據題型名稱匹配生成器
+            if "三角函數值計算" in topic_name:
+                from generators.trigonometry.TrigonometricFunctionGenerator import TrigonometricFunctionGenerator
+                return TrigonometricFunctionGenerator
+
+            # 未來可以加入更多生成器的匹配邏輯
+            return None
+
+        except ImportError as e:
+            # 生成器模組導入失敗，記錄具體錯誤
+            self.logger.error(f"生成器導入失敗: {e}")
+            return None
+        except Exception as e:
+            # 其他未預期錯誤
+            self.logger.warning(f"查找生成器類別失敗: {e}")
+            return None
+
+    def _collect_config_for_topic(self, topic_name: str):
+        """動態收集指定題型的配置值
+
+        優先使用快取的配置值，解決QDialog widget生命週期問題。
+        失敗時返回空字典，確保向後兼容性。
+
+        Args:
+            topic_name: 題型名稱
+
+        Returns:
+            Dict[str, Any]: 收集到的配置值，失敗時返回空字典
+        """
+        # 優先使用快取的配置值
+        if topic_name in self.config_values:
+            self.logger.debug(f"使用快取的{topic_name}配置")
+            return self.config_values[topic_name]
+
+        # 查找對應的配置UI控件 (兼容性回退)
+        config_widget = self.config_widgets.get(topic_name)
+        if not config_widget:
+            return {}
+
+        try:
+            # 獲取對應的配置描述
+            generator_class = self._get_generator_class_by_name(topic_name)
+            if not generator_class:
+                return {}
+
+            schema = generator_class.get_config_schema()
+
+            # 使用ConfigValueCollector收集配置值
+            return self.config_collector.collect_values(config_widget, schema)
+
+        except Exception as e:
+            self.logger.warning(f"收集{topic_name}配置失敗: {e}")
+            return {}  # 返回空字典，不影響基本功能
+
+    def _create_config_button(self, config_ui: QWidget, topic_name: str) -> QPushButton:
+        """創建配置按鈕，點擊彈出配置視窗
+
+        採用彈出視窗方案，完全安全無風險的實施方式。
+        配置UI保持原始狀態，ConfigValueCollector直接工作。
+
+        Args:
+            config_ui: 原始配置控件
+            topic_name: 題型名稱，用於視窗標題
+
+        Returns:
+            配置按鈕，點擊後彈出配置對話框
+        """
+        config_btn = QPushButton("⚙️")
+        config_btn.setObjectName("configButton")
+        config_btn.setFixedSize(28, 28)
+
+        # 動態生成tooltip，顯示當前配置摘要
+        tooltip_text = self._generate_config_tooltip(topic_name)
+        config_btn.setToolTip(tooltip_text)
+
+        # 點擊事件：彈出配置視窗
+        config_btn.clicked.connect(
+            lambda: self._show_config_dialog(config_ui, topic_name)
+        )
+
+        return config_btn
+
+    def _generate_config_tooltip(self, topic_name: str) -> str:
+        """生成動態配置tooltip
+
+        從快取配置或預設配置生成tooltip文字，顯示當前配置摘要。
+
+        Args:
+            topic_name: 題型名稱
+
+        Returns:
+            str: tooltip文字
+        """
+        base_text = f"配置 {topic_name}"
+
+        # 嘗試從快取獲取配置摘要
+        if topic_name in self.config_values:
+            config = self.config_values[topic_name]
+            summary_parts = []
+
+            # 根據常見配置項目生成摘要
+            if 'function_scope' in config:
+                summary_parts.append(f"函數範圍={config['function_scope']}")
+            if 'angle_mode' in config:
+                summary_parts.append(f"角度模式={config['angle_mode']}")
+            if 'difficulty' in config:
+                summary_parts.append(f"難度={config['difficulty']}")
+
+            if summary_parts:
+                return f"{base_text}\n當前：{', '.join(summary_parts)}"
+
+        return f"{base_text}\n點擊設定配置選項"
+
+    def _update_config_button_tooltip(self, topic_name: str):
+        """更新配置按鈕的tooltip
+
+        在配置更改後更新對應按鈕的tooltip內容。
+
+        Args:
+            topic_name: 題型名稱
+        """
+        # 查找對應的配置按鈕並更新tooltip
+        new_tooltip = self._generate_config_tooltip(topic_name)
+
+        # 遍歷找到對應的按鈕 (透過objectName和parent查找)
+        for widget in self.findChildren(QPushButton):
+            if widget.objectName() == "configButton":
+                current_tooltip = widget.toolTip()
+                if topic_name in current_tooltip:
+                    widget.setToolTip(new_tooltip)
+                    self.logger.debug(f"已更新{topic_name}按鈕tooltip")
+                    break
+
+    def _show_config_dialog(self, config_ui: QWidget, topic_name: str):
+        """顯示配置對話框
+
+        使用QDialog包裝配置UI，在關閉前收集配置值以解決widget生命週期問題。
+
+        Args:
+            config_ui: 配置UI控件
+            topic_name: 題型名稱
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{topic_name} - 配置選項")
+        dialog.setModal(True)
+        dialog.setFixedSize(420, 250)
+
+        # 主佈局
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(config_ui)
+
+        # 按鈕區域
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+
+        ok_btn = QPushButton("確定")
+        cancel_btn = QPushButton("取消")
+
+        # 修改確定按鈕邏輯：關閉前收集配置
+        def on_accept():
+            try:
+                # 獲取生成器schema
+                generator_class = self._get_generator_class_by_name(topic_name)
+                if generator_class:
+                    schema = generator_class.get_config_schema()
+                    # 收集並快取配置值
+                    config_values = self.config_collector.collect_values(config_ui, schema)
+                    self.config_values[topic_name] = config_values
+                    self.logger.debug(f"已快取{topic_name}配置: {config_values}")
+
+                    # 更新按鈕tooltip以反映新配置
+                    self._update_config_button_tooltip(topic_name)
+            except Exception as e:
+                self.logger.warning(f"快取{topic_name}配置失敗: {e}")
+            finally:
+                dialog.accept()
+
+        ok_btn.clicked.connect(on_accept)
+        cancel_btn.clicked.connect(dialog.reject)
+
+        btn_layout.addWidget(ok_btn)
+        btn_layout.addWidget(cancel_btn)
+        layout.addLayout(btn_layout)
+
+        # 應用對話框樣式
+        dialog.setObjectName("configDialog")
+
+        # 顯示對話框
+        dialog.exec_()
+
     def get_selected_data(self):
         """獲取已選擇的題型數據
         
@@ -577,9 +838,10 @@ class CategoryWidget(QWidget):
                 # 建立基本數據
                 topic_data = {"topic": topic_name, "count": count}
 
-                # 添加配置收集 - 固定配置策略
-                if "三角函數值計算" in topic_name:
-                    topic_data["config"] = {"function_scope": "basic"}
+                # 動態收集配置，替代硬編碼配置邏輯
+                config = self._collect_config_for_topic(topic_name)
+                if config:
+                    topic_data["config"] = config
 
                 selected_data.append(topic_data)
                 

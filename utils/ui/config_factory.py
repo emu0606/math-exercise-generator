@@ -130,15 +130,16 @@ class ConfigUIFactory:
         control_type = config['type']
         label_text = config['label']
 
-        # 創建控件容器：標籤在上，控件在下
+        # 創建控件容器：標籤和控件水平排列
         field_container = QWidget()
-        field_layout = QVBoxLayout(field_container)
-        field_layout.setSpacing(4)
+        field_layout = QHBoxLayout(field_container)
+        field_layout.setSpacing(8)
         field_layout.setContentsMargins(0, 0, 0, 0)
 
         # 創建標籤
         label = QLabel(label_text)
-        label.setAlignment(Qt.AlignLeft)
+        label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        label.setMinimumWidth(80)  # 設定標籤最小寬度確保對齊
         field_layout.addWidget(label)
 
         # 根據控件類型創建對應的控件
@@ -153,14 +154,23 @@ class ConfigUIFactory:
         control.setObjectName(f"config_{field_name}")
         field_layout.addWidget(control)
 
-        # 添加描述文字（如果有）
+        # 添加彈性空間讓控件不會過度拉伸
+        field_layout.addStretch()
+
+        # 添加描述文字（如果有）- 放到新行
+        container_with_desc = QWidget()
+        container_layout = QVBoxLayout(container_with_desc)
+        container_layout.setSpacing(1)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.addWidget(field_container)
+
         if 'description' in config:
             desc_label = QLabel(config['description'])
-            desc_label.setStyleSheet("color: gray; font-size: 11px;")
+            desc_label.setStyleSheet("color: #3498db; font-size: 14px; margin: 0px; padding: 0px;")
             desc_label.setWordWrap(True)
-            field_layout.addWidget(desc_label)
+            container_layout.addWidget(desc_label)
 
-        return field_container
+        return container_with_desc
 
     def _create_select_widget(self, config: Dict[str, Any]) -> QComboBox:
         """創建下拉選擇控件
@@ -190,14 +200,9 @@ class ConfigUIFactory:
         combo = QComboBox()
         combo.addItems(options)
 
-        # 設定預設選中項
-        try:
-            default_index = options.index(default_value)
-            combo.setCurrentIndex(default_index)
-        except ValueError:
-            # 這個錯誤前面已經檢查過，但防禦性編程
-            self.logger.warning(f"預設值設定失敗，使用第一個選項")
-            combo.setCurrentIndex(0)
+        # 設定預設選中項：前面已驗證default_value在options中
+        default_index = options.index(default_value)
+        combo.setCurrentIndex(default_index)
 
         return combo
 
