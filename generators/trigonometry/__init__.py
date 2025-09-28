@@ -49,18 +49,9 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-# 導入所有三角函數生成器
-from .TrigonometricFunctionGenerator import TrigonometricFunctionGenerator
-from .InverseTrigonometricFunctionGenerator import InverseTrigonometricFunctionGenerator  
-from .TrigAngleConversionGenerator import TrigAngleConversionGenerator
-
 # 記錄模組初始化
-logger.info("三角函數生成器模組初始化完成：3 個生成器已加載")
-logger.debug("可用生成器：統一三角函數、反三角函數、角度轉換")
+logger.info("三角函數生成器模組初始化完成")
+logger.debug("生成器通過自動註冊系統載入")
 
-# 公開 API
-__all__ = [
-    'TrigonometricFunctionGenerator',
-    'InverseTrigonometricFunctionGenerator',
-    'TrigAngleConversionGenerator'
-]
+# 不暴露任何具體生成器，完全依賴自動註冊
+__all__ = []

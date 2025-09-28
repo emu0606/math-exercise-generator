@@ -33,8 +33,6 @@
         'show_coordinates': True
     },
     'options': {
-        # 'width': '4cm', # 已棄用
-        # 'height': '4cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -71,8 +69,6 @@
         'line_color': 'blue'
     },
     'options': {
-        # 'width': '3cm', # 已棄用
-        # 'height': '3cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -85,18 +81,16 @@
 **參數**：
 ```python
 {
-    'variant': 'question',  # 或 'explanation'
-    'x_min': -5.0,          # x 軸最小值
-    'x_max': 5.0,           # x 軸最大值
-    'y_min': -5.0,          # y 軸最小值
-    'y_max': 5.0,           # y 軸最大值
-    'show_grid': False,     # 是否顯示網格
-    'show_labels': True,    # 是否顯示標籤
-    'color': 'black',       # 坐標軸顏色
-    'grid_color': 'gray!30',  # 網格顏色
-    'x_label': 'x',         # x 軸標籤
-    'y_label': 'y',         # y 軸標籤
-    'arrow_style': 'stealth'  # 箭頭樣式
+    'variant': 'question',      # 或 'explanation'
+    'x_range': (-5, 5),         # x 軸顯示範圍 [最小值, 最大值]
+    'y_range': (-5, 5),         # y 軸顯示範圍 [最小值, 最大值]
+    'show_axes': True,          # 是否顯示坐標軸
+    'show_grid': False,         # 是否顯示網格線
+    'show_axes_labels': True,   # 是否顯示軸標籤
+    'x_label': 'x',            # x 軸標籤文字
+    'y_label': 'y',            # y 軸標籤文字
+    'axes_color': 'black',     # 坐標軸顏色
+    'grid_color': 'lightgray'  # 網格線顏色
 }
 ```
 
@@ -106,15 +100,11 @@
     'type': 'coordinate_system',
     'params': {
         'variant': 'question',
-        'x_min': -3.0,
-        'x_max': 3.0,
-        'y_min': -3.0,
-        'y_max': 3.0,
+        'x_range': (-3, 3),
+        'y_range': (-3, 3),
         'show_grid': True
     },
     'options': {
-        # 'width': '5cm', # 已棄用
-        # 'height': '5cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -130,11 +120,10 @@
     'variant': 'question',  # 或 'explanation'
     'x': 0.0,               # x 坐標
     'y': 0.0,               # y 坐標
-    'label': None,          # 標籤（可選）
-    'label_position': 'above',  # 標籤位置
-    'color': 'black',       # 點的顏色
-    'size': 0.03,           # 點的大小
-    'style': 'fill'         # 點的樣式（'fill' 或其他）
+    'label': None,          # 點的標籤文字（可選）
+    'color': 'red',         # 點的顏色
+    'size': '2pt',          # 點的大小
+    'shape': 'circle'       # 點的形狀 ('circle', 'square', 'triangle')
 }
 ```
 
@@ -150,8 +139,6 @@
         'color': 'red'
     },
     'options': {
-        # 'width': '2cm', # 已棄用
-        # 'height': '2cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -194,8 +181,6 @@
         'label': 'c'
     },
     'options': {
-        # 'width': '4cm', # 已棄用
-        # 'height': '4cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -237,8 +222,6 @@
         'label': '45^\\circ'
     },
     'options': {
-        # 'width': '3cm', # 已棄用
-        # 'height': '3cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -319,7 +302,7 @@
 
 ### 9. 圓弧 (`arc`)
 
-根據中心點、半徑以及起始和結束角度（弧度制）繪製一段圓弧。
+根據中心點、半徑以及起始和結束角度（度數制）繪製一段圓弧。
 
 **參數** (`ArcParams`):
 ```python
@@ -327,9 +310,12 @@
     'variant': 'question',      # 或 'explanation' (繼承自 BaseFigureParams)
     'center': (0.0, 0.0),       # 圓弧中心點的座標 (x,y)
     'radius': 1.0,              # 圓弧半徑 (必須為正數)
-    'start_angle_rad': 0.0,     # 起始角度 (弧度制)
-    'end_angle_rad': 1.5708,    # 結束角度 (弧度制, 約 pi/2)
-    'draw_options': None        # 可選的 TikZ 繪製選項, 例如 "thick,red,->"
+    'start_angle': 0,           # 起始角度 (度數制, 0-360)
+    'end_angle': 90,            # 結束角度 (度數制, 0-360)
+    'color': 'black',           # 弧線顏色
+    'line_width': 'thick',      # 線條粗細
+    'show_endpoints': False,    # 是否標記端點
+    'arrow': None               # 箭頭樣式
 }
 ```
 
@@ -341,9 +327,10 @@
         'variant': 'question',
         'center': [1,1],
         'radius': 0.5,
-        'start_angle_rad': 0,
-        'end_angle_rad': 3.14159 / 2, # pi/2 radians (90 degrees)
-        'draw_options': 'orange, very thick'
+        'start_angle': 0,
+        'end_angle': 90,            # 90 degrees
+        'color': 'orange',
+        'line_width': 'very thick'
     },
     'options': {'scale': 1.0}
 }
@@ -438,8 +425,6 @@
         ]
     },
     'options': {
-        # 'width': '5cm', # 已棄用
-        # 'height': '5cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -451,25 +436,25 @@
 
 ### 1. 標準單位圓 (`standard_unit_circle`)
 
-生成一個標準單位圓，包含坐標軸、圓、點、角度等。
+生成一個標準單位圓，包含坐標軸、圓、點、角度等。專為三角函數教學設計。
 
 **參數**：
 ```python
 {
-    'variant': 'question',  # 或 'explanation'
-    'angle': 45.0,          # 角度（0-360）
-    'show_coordinates': True,  # 是否顯示坐標軸
-    'show_angle': True,     # 是否顯示角度弧
-    'show_point': True,     # 是否顯示點
-    'show_radius': True,    # 是否顯示半徑線段
-    'line_color': 'black',  # 圓的顏色
-    'point_color': 'red',   # 點的顏色
-    'angle_color': 'blue',  # 角度弧的顏色
-    'radius_color': 'red',  # 半徑線段的顏色
-    'coordinate_color': 'gray',  # 坐標軸的顏色
-    'radius': 1.0,          # 半徑
-    'label_point': True,    # 是否標記點
-    'point_label': 'P'      # 點的標籤
+    'variant': 'question',      # 或 'explanation'
+    'angle': 45.0,              # 標記的角度（度，0-360）
+    'show_coordinates': True,    # 是否顯示點的坐標值
+    'show_angle': True,         # 是否顯示角度弧線標記
+    'show_point': True,         # 是否顯示角度對應的點
+    'show_radius': True,        # 是否顯示半徑線
+    'line_color': 'black',      # 圓周線條顏色
+    'point_color': 'red',       # 角度點顏色
+    'angle_color': 'blue',      # 角度弧線顏色
+    'radius_color': 'red',      # 半徑線顏色
+    'coordinate_color': 'gray', # 坐標標籤顏色
+    'radius': 1.0,              # 圓的半徑
+    'label_point': True,        # 是否為角度點添加標籤
+    'point_label': 'P'          # 角度點的標籤文字
 }
 ```
 
@@ -486,8 +471,6 @@
         'show_radius': True
     },
     'options': {
-        # 'width': '5cm', # 已棄用
-        # 'height': '5cm', # 已棄用
         'scale': 1.0 # 可選
     }
 }
@@ -609,8 +592,6 @@
 
 ```python
 'options': {
-    'width': '5cm',    # (已棄用) 圖形寬度 - 最終尺寸由佈局函數控制
-    'height': '5cm',   # (已棄用) 圖形高度 - 最終尺寸由佈局函數控制
     'scale': 1.0       # 縮放比例 (用於調整圖形內部相對大小)
 }
 ```
@@ -632,8 +613,6 @@ def generate_question(self) -> Dict[str, Any]:
             'show_coordinates': True
         },
         'options': {
-            # 'width': '4cm', # 已棄用
-            # 'height': '4cm', # 已棄用
             'scale': 1.0 # 可選
         }
     }
@@ -646,8 +625,6 @@ def generate_question(self) -> Dict[str, Any]:
             'show_coordinates': True
         },
         'options': {
-            # 'width': '5cm', # 已棄用
-            # 'height': '5cm', # 已棄用
             'scale': 1.2 # 示例保留 scale
         }
     }

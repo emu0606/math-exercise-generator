@@ -327,7 +327,7 @@ class ArcParams(BaseFigureParams):
     
     @validator('end_angle')
     def validate_angle_range(cls, v, values):
-        """驗證結束角度必須大於起始角度"""
-        if 'start_angle' in values and v <= values['start_angle']:
-            raise ValueError("結束角度必須大於起始角度")
+        """驗證結束角度不能小於起始角度"""
+        if 'start_angle' in values and v < values['start_angle']:
+            raise ValueError("結束角度不能小於起始角度")
         return v

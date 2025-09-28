@@ -399,25 +399,9 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
             'options': {'scale': 1.2}  # 詳解圖稍大
         }
 
-    def _get_standard_metadata(self) -> Dict[str, Any]:
-        """提供統一的元數據處理
-
-        提供統一的元數據處理，確保所有題目都包含完整的分類信息。
-
-        Returns:
-            Dict[str, Any]: 標準化的元數據字典
-
-        Note:
-            包含年級分類 G10S2（高一下學期），符合教育標準。
-            統一處理避免重複代碼，確保元數據的一致性。
-        """
-        return {
-            "size": self.get_question_size(),
-            "difficulty": self.get_difficulty(),
-            "category": self.get_category(),
-            "subcategory": self.get_subcategory(),
-            "grade": "G10S2",  # 新增年級分類：高一下學期（三角函數）
-        }
+    def get_grade(self) -> str:
+        """獲取適用年級"""
+        return "G10S2"  # 高一下學期（三角函數）
 
     def _generate_core_logic(self, angle_deg: int, func: Any, value: Union[Any, str]) -> Dict[str, Any]:
         """建構完整的題目回應數據

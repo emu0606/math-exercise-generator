@@ -226,26 +226,13 @@ class InverseTrigonometricFunctionGenerator(QuestionGenerator):
             **self._get_standard_metadata()
         }
 
-    def _get_standard_metadata(self) -> Dict[str, Any]:
-        """獲取標準元數據
+    def get_grade(self) -> str:
+        """獲取適用年級"""
+        return "G10S2"  # 高一下學期（三角反函數適用年級）
 
-        提供PDF生成所需的完整元數據，包括尺寸、難度、分類等資訊。
-
-        Returns:
-            Dict[str, Any]: 包含標準元數據的字典
-        """
-        return {
-            "size": self.get_question_size(),  # SMALL - 三角反函數題目較簡潔
-            "difficulty": self.difficulty,     # 預設"MEDIUM"，可配置
-            "category": self.get_category(),   # "三角函數"
-            "subcategory": self.get_subcategory(),  # "反三角函數值計算"
-            "grade": "G10S2",  # 高一下學期（三角反函數適用年級）
-            # 預留圖形相關欄位，確保PDF相容
-            "figure_data_question": None,
-            "figure_data_explanation": None,
-            "figure_position": "right",
-            "explanation_figure_position": "right"
-        }
+    def get_difficulty(self) -> str:
+        """獲取難度等級"""
+        return self.difficulty
 
     # 以下方法實現標準介面，確保與PDF生成系統相容
     def get_question_size(self) -> int:

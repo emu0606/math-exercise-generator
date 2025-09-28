@@ -102,21 +102,12 @@ logger.info("初始化 generators 模組，開始自動註冊所有生成器")
 import_submodules()
 logger.info("generators 模組初始化完成")
 
-# 為了向後兼容，保留這些導入
-try:
-    from generators.algebra import DoubleRadicalSimplificationGenerator
-    legacy_generators = ['DoubleRadicalSimplificationGenerator']
-    logger.debug("成功導入舊版生成器以保持向後兼容")
-except ImportError as e:
-    logger.warning(f"無法導入舊版生成器，向後兼容性可能受影響: {str(e)}")
-    legacy_generators = []
-
-# 公開 API 列表
+# 公開 API 列表 - 只暴露基礎類別，不暴露具體生成器
 __all__ = [
     # 基礎類別和工具
-    'QuestionGenerator', 
-    'register_generator', 
+    'QuestionGenerator',
+    'register_generator',
     'QuestionSize',
     # 自動導入功能
     'import_submodules',
-] + legacy_generators  # 動態添加可用的舊版生成器
+]

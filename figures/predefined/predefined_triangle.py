@@ -509,12 +509,10 @@ class PredefinedTriangleGenerator(FigureGenerator):
 
 
                 arc_params_dict: Dict[str, Any] = {
-                    "variant": config.variant,
-                    "center": arc_render_info['center'], # This is v_angle
+                    "center": [arc_render_info['center'].x, arc_render_info['center'].y], # Convert Point to tuple
                     "radius": arc_render_info['radius'],
-                    "start_angle_rad": tikz_arc_start_rad, # Use adjusted angles
-                    "end_angle_rad": tikz_arc_end_rad,     # Use adjusted angles
-                    "draw_options": arc_style_cfg.draw_options
+                    "start_angle": math.degrees(tikz_arc_start_rad), # Convert to degrees
+                    "end_angle": math.degrees(tikz_arc_end_rad),     # Convert to degrees
                 }
                 try:
                     tikz_parts.append(arc_gen.generate_tikz(arc_params_dict))

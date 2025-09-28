@@ -45,13 +45,8 @@ from utils import get_logger
 
 logger = get_logger(__name__)
 
-# 導入所有代數生成器
-from .double_radical_simplification import DoubleRadicalSimplificationGenerator
-
 # 記錄模組初始化
 logger.debug("代數生成器模組初始化完成")
 
-# 公開 API
-__all__ = [
-    'DoubleRadicalSimplificationGenerator'
-]
+# 不暴露任何具體生成器，完全依賴自動註冊
+__all__ = []

@@ -457,26 +457,13 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
             "explanation": explanation
         }
 
-    def _get_standard_metadata(self) -> Dict[str, Any]:
-        """獲取標準元數據
+    def get_grade(self) -> str:
+        """獲取適用年級"""
+        return "G10S1"  # 年級分類：十年級上學期（高中代數）
 
-        提供PDF生成所需的完整元數據，包括尺寸、難度、分類等資訊。
-
-        Returns:
-            Dict[str, Any]: 包含標準元數據的字典
-        """
-        return {
-            "size": QuestionSize.WIDE.value,  # 雙重根式較複雜，需要寬版面顯示
-            "difficulty": "MEDIUM",
-            "category": self.get_category(),
-            "subcategory": self.get_subcategory(),
-            "grade": "G10S1",  # 年級分類：十年級上學期（高中代數）
-            # 預留圖形相關欄位，確保PDF兼容
-            "figure_data_question": None,
-            "figure_data_explanation": None,
-            "figure_position": "right",
-            "explanation_figure_position": "right"
-        }
+    def get_question_size(self) -> int:
+        """獲取題目顯示大小"""
+        return QuestionSize.WIDE.value  # 雙重根式較複雜，需要寬版面顯示
 
     def _get_fallback_question(self) -> Dict[str, Any]:
         """獲取預設題目

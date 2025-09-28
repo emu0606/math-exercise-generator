@@ -92,10 +92,8 @@ class StandardUnitCircleGenerator(FigureGenerator):
                     id="coordinates",
                     type="coordinate_system",
                     params={
-                        "x_min": -radius * 1.2,
-                        "x_max": radius * 1.2,
-                        "y_min": -radius * 1.2,
-                        "y_max": radius * 1.2,
+                        "x_range": (-radius * 1.2, radius * 1.2),
+                        "y_range": (-radius * 1.2, radius * 1.2),
                         "show_labels": False,
                         "color": coordinate_color,
                         "variant": variant
@@ -130,9 +128,7 @@ class StandardUnitCircleGenerator(FigureGenerator):
                     "x": 0,
                     "y": 0,
                     #"label": "O",
-                    "label_position": "below left",
-                    "color": line_color,
-                    "variant": variant
+                    "color": line_color
                 },
                 position=AbsolutePosition(x=0, y=0)
             )
@@ -191,16 +187,15 @@ class StandardUnitCircleGenerator(FigureGenerator):
             sub_figures.append(
                 SubFigureParams(
                     id="angle",
-                    type="angle",
+                    type="arc",
                     params={
+                        "center": [0, 0],
                         "start_angle": 0,
                         "end_angle": angle,
                         "radius": 0.3,
-                        "color": angle_color,
-                        "show_arrow": False,
+                        "color": angle_color
                         #"label": f"{angle}^\\circ",
                         #"label_position": angle_label_position,
-                        "variant": variant
                     },
                     position=AbsolutePosition(x=0, y=0)
                 )
@@ -243,8 +238,7 @@ class StandardUnitCircleGenerator(FigureGenerator):
                             "x": float(cos_value + offset_x),  # 水平偏移
                             "y": float(sin_value),             # 保持與點 P 相同的垂直位置
                             "text": f"({cos_latex},{sin_latex})",
-                            "position": coord_position,
-                            "variant": variant
+                            "anchor": coord_position
                         },
                         position=AbsolutePosition(x=0, y=0)
                     )
