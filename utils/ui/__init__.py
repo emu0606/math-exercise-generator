@@ -10,5 +10,6 @@
 """
 
 from .config_factory import ConfigUIFactory, ConfigValueCollector
+from .percentage_dialog import PercentageConfigDialog
 
-__all__ = ['ConfigUIFactory', 'ConfigValueCollector']
+__all__ = ['ConfigUIFactory', 'ConfigValueCollector', 'PercentageConfigDialog']

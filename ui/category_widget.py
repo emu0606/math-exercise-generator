@@ -742,15 +742,68 @@ class CategoryWidget(QWidget):
                     self.logger.debug(f"已更新{topic_name}按鈕tooltip")
                     break
 
+    def _is_widget_valid(self, widget: QWidget) -> bool:
+        """檢查widget是否仍然有效
+
+        當Qt進行UI重建時，某些widget可能被刪除但Python引用仍存在。
+        嘗試訪問已刪除widget的屬性會觸發RuntimeError。
+
+        Args:
+            widget: 要檢查的widget
+
+        Returns:
+            bool: True if widget is valid, False if deleted
+        """
+        try:
+            # 嘗試訪問widget屬性，無效時會拋出RuntimeError
+            _ = widget.objectName()
+            return True
+        except RuntimeError:
+            return False
+
+    def _recreate_config_ui(self, topic_name: str):
+        """重新創建配置UI
+
+        當原始config_ui被刪除時，使用現有的工廠方法重新創建。
+        這確保了字體縮放等UI重建操作不會影響配置功能。
+
+        Args:
+            topic_name: 題型名稱，格式為 "category/subcategory"
+
+        Returns:
+            QWidget: 重新創建的配置UI控件，失敗時返回None
+        """
+        try:
+            self.logger.debug(f"重新創建{topic_name}的配置UI")
+            new_config_ui = self._create_config_ui_for_topic(topic_name)
+            if new_config_ui:
+                self.logger.debug(f"成功重新創建{topic_name}的配置UI")
+            return new_config_ui
+        except Exception as e:
+            self.logger.error(f"重新創建{topic_name}配置UI失敗: {e}")
+            return None
+
     def _show_config_dialog(self, config_ui: QWidget, topic_name: str):
         """顯示配置對話框
 
         使用QDialog包裝配置UI，在關閉前收集配置值以解決widget生命週期問題。
+        添加widget有效性檢查，防範字體縮放等UI重建操作導致的RuntimeError。
 
         Args:
             config_ui: 配置UI控件
             topic_name: 題型名稱
         """
+        # 檢查config_ui是否仍然有效
+        if not self._is_widget_valid(config_ui):
+            self.logger.debug(f"檢測到{topic_name}的config_ui已失效，嘗試重新創建")
+            new_config_ui = self._recreate_config_ui(topic_name)
+            if new_config_ui is None:
+                self.logger.error(f"無法重新創建{topic_name}的配置UI，配置對話框無法顯示")
+                QMessageBox.warning(self, "配置錯誤",
+                                  f"無法顯示{topic_name}的配置選項，請重新載入程式。")
+                return
+            config_ui = new_config_ui
+
         dialog = QDialog(self)
         dialog.setWindowTitle(f"{topic_name} - 配置選項")
         dialog.setModal(True)
@@ -791,8 +844,8 @@ class CategoryWidget(QWidget):
         ok_btn.clicked.connect(on_accept)
         cancel_btn.clicked.connect(dialog.reject)
 
-        btn_layout.addWidget(ok_btn)
         btn_layout.addWidget(cancel_btn)
+        btn_layout.addWidget(ok_btn)
         layout.addLayout(btn_layout)
 
         # 應用對話框樣式

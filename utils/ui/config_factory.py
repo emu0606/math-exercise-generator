@@ -9,7 +9,7 @@
 主要功能：
 - ConfigUIFactory: 根據配置描述自動生成UI控件
 - ConfigValueCollector: 收集UI控件的配置值
-- 支援控件類型：select(下拉框)、checkbox(勾選框)
+- 支援控件類型：select(下拉框)、checkbox(勾選框)、percentage_group(百分比分配)
 - 完整的配置驗證和錯誤處理機制
 
 使用範例：
@@ -27,7 +27,7 @@
 """
 
 from typing import Dict, Any, Optional
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox, QPushButton
 from PyQt5.QtCore import Qt
 
 from utils import get_logger
@@ -44,6 +44,7 @@ class ConfigUIFactory:
     支援的控件類型：
     - select: 下拉選擇框（QComboBox）
     - checkbox: 勾選框（QCheckBox）
+    - percentage_group: 百分比分配對話框（QPushButton + PercentageConfigDialog）
 
     Example:
         >>> factory = ConfigUIFactory()
@@ -147,6 +148,8 @@ class ConfigUIFactory:
             control = self._create_select_widget(config)
         elif control_type == "checkbox":
             control = self._create_checkbox_widget(config)
+        elif control_type == "percentage_group":
+            control = self._create_percentage_group_widget(config)
         else:
             raise ValueError(f"不支援的控件類型: {control_type}")
 
@@ -232,6 +235,130 @@ class ConfigUIFactory:
 
         return checkbox
 
+    def _create_percentage_group_widget(self, config: Dict[str, Any]) -> QPushButton:
+        """創建百分比分配控件
+
+        創建配置按鈕，點擊時彈出PercentageConfigDialog對話框。
+        使用按鈕屬性存儲配置值，避免複雜的事件系統。
+
+        Args:
+            config: 必須包含 type='percentage_group'、label 和 items
+
+        Returns:
+            QPushButton: 配置按鈕，內部存儲配置值
+
+        Raises:
+            ValueError: 配置格式錯誤或缺少必需欄位
+        """
+        # 驗證percentage_group特定欄位：items用於對話框生成
+        if 'items' not in config or not isinstance(config['items'], dict):
+            raise ValueError("percentage_group控件必須包含items字典")
+
+        if len(config['items']) < 2:
+            raise ValueError("percentage_group控件至少需要2個項目")
+
+        # 計算預設值總和：確保配置邏輯正確，避免運行時錯誤
+        items = config['items']
+        total_default = 0
+        default_values = {}
+
+        for item_key, item_config in items.items():
+            if not isinstance(item_config, dict):
+                raise ValueError(f"項目'{item_key}'配置必須為字典")
+            if 'default' not in item_config:
+                raise ValueError(f"項目'{item_key}'必須包含default值")
+            if not isinstance(item_config['default'], (int, float)):
+                raise ValueError(f"項目'{item_key}'的default必須為數值")
+
+            default_value = int(item_config['default'])
+            default_values[item_key] = default_value
+            total_default += default_value
+
+        # 驗證預設值總和：必須為100%，確保配置邏輯正確
+        if abs(total_default - 100) > 0.01:  # 允許浮點誤差
+            raise ValueError(f"percentage_group預設值總和必須為100%，當前為{total_default}%")
+
+        # 創建配置按鈕：顯示當前配置狀態
+        config_button = QPushButton()
+        self._update_button_display(config_button, default_values)
+
+        # 存儲配置值到按鈕屬性：使用屬性存儲避免複雜的值持久化
+        config_button._saved_values = default_values
+        config_button._config_schema = config
+
+        # 連接按鈕點擊事件：點擊時彈出配置對話框
+        config_button.clicked.connect(
+            lambda: self._open_percentage_dialog(config_button)
+        )
+
+        return config_button
+
+    def _update_button_display(self, button: QPushButton, values: Dict[str, int]):
+        """更新配置按鈕的顯示文字
+
+        根據當前配置值生成簡潔的按鈕顯示文字，
+        讓用戶快速了解當前配置狀態。
+
+        Args:
+            button: 要更新的配置按鈕
+            values: 當前配置值字典
+        """
+        # 生成簡潔的配置摘要：顯示前2-3個主要項目
+        value_pairs = list(values.items())
+        if len(value_pairs) <= 3:
+            # 項目少於等於3個：顯示全部
+            summary_parts = [f"{value}%" for value in values.values()]
+            display_text = f"配置: {' / '.join(summary_parts)}"
+        else:
+            # 項目超過3個：顯示前2個 + 總數
+            first_two = [f"{value}%" for _, value in value_pairs[:2]]
+            remaining_count = len(value_pairs) - 2
+            display_text = f"配置: {' / '.join(first_two)} + {remaining_count}項..."
+
+        button.setText(display_text)
+        button.setToolTip("點擊配置百分比分配")  # 提供操作提示
+
+    def _open_percentage_dialog(self, config_button: QPushButton):
+        """開啟百分比配置對話框
+
+        彈出PercentageConfigDialog讓用戶調整配置，
+        確認後更新按鈕顯示和存儲值。
+
+        Args:
+            config_button: 觸發的配置按鈕，包含schema和當前值
+        """
+        # 導入對話框類：延遲導入避免循環依賴
+        from .percentage_dialog import PercentageConfigDialog
+
+        try:
+            # 準備對話框schema：使用按鈕存儲的配置資訊
+            dialog_schema = config_button._config_schema.copy()
+
+            # 設定當前值為對話框的預設值：保持用戶之前的配置
+            current_values = getattr(config_button, '_saved_values', {})
+            for item_key, current_value in current_values.items():
+                if item_key in dialog_schema['items']:
+                    dialog_schema['items'][item_key]['default'] = current_value
+
+            # 創建並顯示對話框：使用當前控件的父widget作為parent
+            parent_widget = config_button.parent()
+            dialog = PercentageConfigDialog(parent_widget, dialog_schema)
+
+            # 處理對話框結果：只有確認時才更新配置
+            if dialog.exec_() == dialog.Accepted:
+                # 獲取新配置值並更新按鈕
+                new_values = dialog.get_values()
+                config_button._saved_values = new_values
+                self._update_button_display(config_button, new_values)
+
+                # 記錄配置更新：有助於調試和監控
+                self.logger.info(f"百分比配置已更新: {new_values}")
+
+        except Exception as e:
+            # 對話框開啟失敗不影響基本功能，但需記錄錯誤
+            self.logger.error(f"開啟百分比配置對話框失敗: {e}")
+            # 可以在此處添加用戶友善的錯誤提示
+
 
 class ConfigValueCollector:
     """配置值收集器類
@@ -315,5 +442,43 @@ class ConfigValueCollector:
             return control.currentText()
         elif control_type == "checkbox" and isinstance(control, QCheckBox):
             return control.isChecked()
+        elif control_type == "percentage_group" and isinstance(control, QPushButton):
+            # 從按鈕屬性提取配置值：使用屬性存儲避免複雜的值查詢
+            saved_values = getattr(control, '_saved_values', None)
+            if saved_values is None:
+                # 沒有存儲值時使用預設值：確保向後兼容性
+                return self._get_percentage_group_defaults(config)
+            return saved_values
         else:
             raise ValueError(f"控件類型不匹配: 預期{control_type}，實際{type(control)}")
+
+    def _get_percentage_group_defaults(self, config: Dict[str, Any]) -> Dict[str, int]:
+        """取得percentage_group的預設值
+
+        從配置描述中提取預設值，用於控件初始化或回退情況。
+        確保返回的值格式與對話框輸出一致。
+
+        Args:
+            config: percentage_group配置描述，包含items和預設值
+
+        Returns:
+            Dict[str, int]: 各項目的預設百分比值
+
+        Raises:
+            ValueError: 配置格式錯誤
+        """
+        # 驗證配置格式：確保items存在
+        if 'items' not in config or not isinstance(config['items'], dict):
+            raise ValueError("percentage_group配置必須包含items字典")
+
+        default_values = {}
+
+        # 提取每個項目的預設值
+        for item_key, item_config in config['items'].items():
+            if not isinstance(item_config, dict) or 'default' not in item_config:
+                raise ValueError(f"項目'{item_key}'必須包含default值")
+
+            default_value = int(item_config['default'])
+            default_values[item_key] = default_value
+
+        return default_values

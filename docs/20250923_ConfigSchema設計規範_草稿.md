@@ -144,129 +144,140 @@ def get_config_schema(cls) -> Dict[str, Dict[str, Any]]:
 ### **4. percentage_group - 百分比組合控件**
 
 #### **設計理念**
-- 處理多個數值必須滿足特定數學關係的場景
-- 前N-1個可編輯，最後一個自動計算確保總和=100%
+- 處理多個數值必須總和=100%的場景
+- 使用彈出對話框提供充足的配置空間
 - 支援2個以上的項目（不限制為3個）
+- 採用極簡設計，避免過度工程化
 
-#### **格式定義**
+#### **實施方式**
+- **UI實現**：彈出式配置對話框，而非內嵌複雜控件
+- **字體規範**：遵循FontManager系統，支援動態縮放
+- **視覺化**：文字進度條即時預覽，5行代碼實現
+
+#### **格式定義（簡化版）**
 ```python
 {
     "type": "percentage_group",
     "label": "組合標籤",
     "description": "詳細說明",
-    "validation": {
-        "total_target": 100,          # 總和目標值
-        "auto_adjust": True          # 超過目標時是否自動調整
-    },
     "items": {
         "item1_name": {
-            "type": "number",
             "label": "項目1標籤",
-            "default": 數字值,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": True          # 可編輯
+            "default": 數字值
         },
         "item2_name": {
-            "type": "number",
             "label": "項目2標籤",
-            "default": 數字值,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": True          # 可編輯
+            "default": 數字值
         },
         "itemN_name": {
-            "type": "number",
             "label": "項目N標籤",
-            "default": 數字值,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": False,        # 自動計算，不可編輯
-            "computed": True          # 標記為計算欄位
+            "default": 數字值
         }
     }
 }
 ```
 
-#### **驗證規則**
+#### **驗證規則（簡化）**
 - ✅ `items` 必需，且至少包含2個項目
-- ✅ 必須有且僅有一個項目的 `editable` 為 `False` 且 `computed` 為 `True`
-- ✅ 計算項目必須是最後一個項目（保持UI邏輯一致）
-- ✅ 所有項目的 `default` 總和必須等於 `total_target`
-- ✅ 所有項目必須為 `number` 類型且有相同的 `datatype`
+- ✅ 所有項目的 `default` 總和必須等於100
+- ✅ 所有項目必須包含 `label` 和 `default`
+- ✅ `default` 值必須為正整數
 
-#### **範例**
+#### **範例（基於實際使用）**
 ```python
 "mode_weights": {
     "type": "percentage_group",
     "label": "題型比例分配",
-    "description": "調整各種題型的出現頻率，總和自動保持100%",
-    "validation": {
-        "total_target": 100,
-        "auto_adjust": True
-    },
+    "description": "調整三種題型的出現頻率，總和會自動正規化為100%",
     "items": {
         "original": {
-            "type": "number",
             "label": "第一象限轉換(%)",
-            "default": 70,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": True
+            "default": 70
         },
         "formula": {
-            "type": "number",
             "label": "公式問答(%)",
-            "default": 10,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": True
+            "default": 10
         },
         "narrow_angle": {
-            "type": "number",
             "label": "窄角轉換(%)",
-            "default": 20,
-            "min": 0,
-            "max": 100,
-            "datatype": "int",
-            "editable": False,
-            "computed": True
+            "default": 20
         }
     }
 }
 ```
 
+#### **對話框實施詳情**
+```python
+# 實際產生的彈出對話框包含：
+# - 標題：使用18px bold字體
+# - 說明文字：14px #3498db顏色
+# - N個數值輸入框：QSpinBox (0-100範圍)
+# - 文字進度條：12px等寬字體即時預覽
+# - 總和驗證：嚴格=100%才能確定
+# - 確定/取消按鈕：14px預設字體
+```
+
 ---
 
-## ✅ **Schema驗證器設計**
+## ✅ **Schema驗證器設計（簡化版）**
 
 ### **驗證器介面**
 ```python
 # utils/ui/schema_validator.py
 class ConfigSchemaValidator:
     def validate_schema(self, schema: Dict[str, Any]) -> None:
-        """嚴格驗證schema格式，發現問題立即拋出異常"""
+        """驗證schema格式，配合Phase 4實施方案"""
 
     def validate_field(self, field_name: str, field_config: Dict[str, Any]) -> None:
-        """驗證單個配置項"""
+        """驗證單個配置項，支援四種基礎控件類型"""
 
     def _validate_select_field(self, config: Dict[str, Any]) -> None:
-        """驗證select類型欄位"""
+        """驗證select類型：options必需，default在options中"""
 
     def _validate_number_field(self, config: Dict[str, Any]) -> None:
-        """驗證number類型欄位"""
+        """驗證number類型：default為數字，支援min/max範圍"""
+
+    def _validate_checkbox_field(self, config: Dict[str, Any]) -> None:
+        """驗證checkbox類型：default為布林值"""
 
     def _validate_percentage_group_field(self, config: Dict[str, Any]) -> None:
-        """驗證percentage_group類型欄位"""
+        """驗證percentage_group類型：items必需，總和=100"""
 
 class ConfigSchemaError(Exception):
     """Schema格式錯誤異常"""
     pass
+```
+
+### **簡化版驗證規則**
+```python
+def _validate_percentage_group_field(self, config: Dict[str, Any]) -> None:
+    """專為Phase 4彈出對話框設計的驗證邏輯"""
+
+    # 基本欄位檢查
+    if 'items' not in config:
+        raise ConfigSchemaError("percentage_group必須包含items欄位")
+
+    items = config['items']
+    if len(items) < 2:
+        raise ConfigSchemaError("percentage_group至少需要2個項目")
+
+    # 簡化驗證：只檢查label和default
+    total = 0
+    for item_name, item_config in items.items():
+        if 'label' not in item_config:
+            raise ConfigSchemaError(f"項目{item_name}缺少label欄位")
+        if 'default' not in item_config:
+            raise ConfigSchemaError(f"項目{item_name}缺少default欄位")
+
+        default_val = item_config['default']
+        if not isinstance(default_val, int) or default_val < 0:
+            raise ConfigSchemaError(f"項目{item_name}的default必須為正整數")
+
+        total += default_val
+
+    # 總和必須=100
+    if total != 100:
+        raise ConfigSchemaError(f"所有項目default總和必須=100，當前={total}")
 ```
 
 ### **錯誤處理策略**
@@ -378,29 +389,68 @@ def get_config_schema(cls):
 
 ---
 
-## 📋 **實施檢查清單**
+## 📋 **Phase 4實施檢查清單**
 
-### **Schema規範完成標準**
-- [ ] 四種基礎控件類型完整定義
-- [ ] percentage_group通用設計（支援N個項目）
-- [ ] 嚴格驗證規則和錯誤處理
-- [ ] 完整的開發者指南和範例
-- [ ] 自動化測試設計方案
+### **ConfigSchema規範標準**
+- [x] 四種基礎控件類型定義（select, number, checkbox, percentage_group）
+- [x] percentage_group簡化設計（彈出對話框實施）
+- [x] 簡化版驗證規則和錯誤處理
+- [x] 實際使用範例和開發者指南
+- [ ] 字體規範與FontManager整合說明
 
-### **驗證器實現標準**
-- [ ] 所有驗證規則正確實現
-- [ ] 清晰的錯誤信息和修正建議
-- [ ] 完整的單元測試覆蓋
-- [ ] 與ConfigUIFactory整合
+### **與Phase 4實施方案對齊**
+- [x] percentage_group採用彈出對話框實施
+- [x] 移除過度工程化設計（editable, computed, validation巢狀）
+- [x] 符合「基礎招式」設計理念
+- [x] 支援文字進度條視覺化需求
+- [ ] ConfigUIFactory整合方式說明
 
-### **測試工具標準**
-- [ ] 自動掃描所有生成器
-- [ ] 邊界情況和錯誤情況測試
-- [ ] 開發時即時驗證工具
-- [ ] CI/CD集成
+### **驗證器實現標準（簡化版）**
+- [ ] 四種控件類型驗證邏輯
+- [ ] percentage_group總和=100%驗證
+- [ ] 清晰的ConfigSchemaError錯誤信息
+- [ ] 與ConfigUIFactory整合測試
+
+### **實際使用測試**
+- [ ] 三角函數生成器配置schema驗證
+- [ ] 角度轉換生成器複雜配置測試
+- [ ] 彈出對話框UI生成測試
+- [ ] 配置值收集和傳遞測試
 
 ---
 
-**狀態**: 📝 **草稿完成，等待審核和確認**
-**下一步**: 基於此規範更新動態配置UI工作計畫
-**重點**: percentage_group的通用設計和嚴格驗證策略
+## 🎯 **與Phase 4工作計畫的整合**
+
+### **ConfigUIFactory擴展需求**
+基於此Schema規範，Phase 4需要實現：
+
+1. **percentage_group控件生成**：
+   ```python
+   def _create_percentage_group_widget(self, config: Dict[str, Any]) -> QPushButton:
+       """創建百分比配置按鈕，點擊開啟PercentageConfigDialog"""
+   ```
+
+2. **對話框實施**：
+   ```python
+   class PercentageConfigDialog(QDialog):
+       """根據schema['items']動態生成N個數值輸入框"""
+   ```
+
+3. **配置值收集**：
+   ```python
+   def collect_percentage_group_values(self, button: QPushButton) -> Dict[str, int]:
+       """從按鈕屬性收集百分比配置值"""
+   ```
+
+### **字體規範整合**
+- **對話框標題**：18px bold（title字體）
+- **描述文字**：14px #3498db（與ConfigUIFactory一致）
+- **進度條文字**：12px等寬字體（Consolas回退）
+- **輸入框標籤**：14px預設（widget字體）
+
+---
+
+**狀態**: ✅ **Phase 4實施規範完成 - 已簡化並對齊實際方案**
+**核心調整**: 移除過度工程化，採用彈出對話框極簡設計
+**下一步**: 基於此規範開始Phase 4的ConfigUIFactory擴展實施
+**重點**: 簡化的percentage_group格式 + 字體系統整合
