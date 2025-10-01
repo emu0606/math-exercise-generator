@@ -3,7 +3,7 @@
 
 """三角函數角度轉換生成器
 
-基於舊版已驗證的數學邏輯重寫，整合新架構的統一標準和動態配置UI支援。
+整合統一標準和動態配置UI支援。
 生成三種類型的角度轉換題目：
 - 第一象限轉換: 將任意角度轉換為0°-90°範圍（70%預設）
 - 公式問答: 基本三角函數關係公式題（10%預設）
@@ -19,7 +19,7 @@
 """
 
 import random
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 
 from utils import get_logger
 from generators.base import QuestionGenerator, register_generator
@@ -29,7 +29,7 @@ from generators.base import QuestionGenerator, register_generator
 class TrigAngleConversionGenerator(QuestionGenerator):
     """三角函數角度轉換生成器
 
-    生成三種類型的三角函數角度轉換題目，使用基礎招式配置處理，
+    生成三種類型的三角函數角度轉換題目，採用簡潔配置處理方式，
     整合動態配置UI系統支援。
 
     Args:
@@ -73,7 +73,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
         "cot": "\\cot"
     }
 
-    # 公式問答題庫（從archived版本保留）
+    # 公式問答題庫
     FORMULA_QUESTIONS = {
         "sin": [
             {"question": "\\sin(180^\\circ-\\theta) = ", "answer": "\\sin(\\theta)"},
@@ -101,7 +101,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
     def __init__(self, options: Dict[str, Any] = None):
         """初始化三角函數角度轉換生成器
 
-        使用基礎招式的配置處理，整合動態配置UI支援。
+        採用簡潔的配置處理方式，整合動態配置UI支援。
 
         Args:
             options (Dict[str, Any], optional): 生成器配置選項
@@ -143,7 +143,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
         - basic: 直接使用基礎角度
         - extended: 基礎角度 + 隨機旋轉圈數
         """
-        # 統一基礎角度範圍（來自舊版驗證的有效範圍）
+        # 統一基礎角度範圍
         min_angle, max_angle = -80, 260
 
         # 生成基本角度列表，避開90度的倍數
@@ -189,54 +189,38 @@ class TrigAngleConversionGenerator(QuestionGenerator):
                 "options": ["basic", "extended"],
                 "default": "basic",
                 "description": "basic(-80°~260°)，extended(基礎角度+n*360°)",
-                # 重新設計：basic直接使用基礎角度，extended加上隨機旋轉
+                # basic直接使用基礎角度，extended加上隨機旋轉
             }
         }
 
-    def generate_question(self) -> Dict[str, Any]:
-        """生成題目的主要方法
+    def _generate_core_question(self) -> Dict[str, Any]:
+        """核心三角函數角度轉換題目生成邏輯
 
-        使用重試機制和完整錯誤處理，確保題目生成的穩定性。
-        採用三層保護：重試機制 → 異常捕獲 → 後備題目。
+        使用確定性生成，基於預篩選機制和權重選擇。
+        三種題型都有完善的預篩選邏輯，無需重試機制。
 
         Returns:
             Dict[str, Any]: 包含完整題目資訊的字典
+
+        設計原理:
+            採用確定性生成而非重試機制：
+            1. 預篩選機制已確保角度有效性
+            2. formula題型從固定題庫選擇
+            3. 權重選擇機制保證題型分布
         """
-        self.logger.info("開始生成三角函數角度轉換題目")
+        # 使用配置的權重選擇題型
+        mode = random.choices(
+            ["original", "formula", "narrow_angle"],
+            weights=self.mode_weights
+        )[0]
 
-        # 重試機制確保生成穩定性
-        for attempt in range(10):
-            try:
-                # 使用配置的權重選擇題型
-                mode = random.choices(
-                    ["original", "formula", "narrow_angle"],
-                    weights=self.mode_weights
-                )[0]
-
-                # 根據題型調用對應方法
-                if mode == "original":
-                    result = self._generate_original_question()
-                elif mode == "formula":
-                    result = self._generate_formula_question()
-                else:  # narrow_angle
-                    result = self._generate_narrow_angle_question()
-
-                # 驗證生成結果的完整性
-                if self._is_valid_result(result):
-                    self.logger.info(f"題目生成成功（嘗試 {attempt + 1} 次）")
-                    return result
-                else:
-                    self.logger.warning(f"生成結果驗證失敗，重試（嘗試 {attempt + 1}）")
-                    continue
-
-            except Exception as e:
-                self.logger.warning(f"生成嘗試 {attempt + 1} 失敗: {str(e)}")
-                if attempt < 9:  # 不是最後一次嘗試
-                    continue
-
-        # 所有嘗試失敗時使用後備機制確保系統穩定
-        self.logger.warning("所有生成嘗試失敗，使用預設題目")
-        return self._get_fallback_question()
+        # 根據題型調用對應方法，所有方法都是確定性的
+        if mode == "original":
+            return self._generate_original_question()
+        elif mode == "formula":
+            return self._generate_formula_question()
+        else:  # narrow_angle
+            return self._generate_narrow_angle_question()
 
     def _generate_original_question(self) -> Dict[str, Any]:
         """生成第一象限轉換題
@@ -266,9 +250,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
             turns = random.choice([t for t in range(-4, 5) if t != 0])
             question_angle = base_angle + turns * 360
 
-        # 確保tan函數角度的有效性
-        if func == "tan" and (question_angle % 180 in [90, -90]):
-            question_angle += 10  # 避開tan的不連續點
+        # 注意：由於base_angles已排除90°倍數，此檢查不再需要
 
         # 執行第一象限轉換
         first_quad_angle, sign = self._convert_to_first_quadrant(base_angle, func)
@@ -307,7 +289,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
         # 從該函數的題庫中隨機選一題
         question_data = random.choice(self.FORMULA_QUESTIONS[func])
 
-        # 使用f字串格式化（基礎招式）
+        # 使用f字串格式化
         question_text = f"計算 ${question_data['question']}$"
         answer_text = f"${question_data['answer']}$"
 
@@ -353,9 +335,7 @@ class TrigAngleConversionGenerator(QuestionGenerator):
             turns = random.choice([t for t in range(-4, 5) if t != 0])
             question_angle = base_angle + turns * 360
 
-        # 確保tan函數角度的有效性
-        if func == "tan" and (question_angle % 180 in [90, -90]):
-            question_angle += 10
+        # 注意：由於base_angles已排除90°倍數，此檢查不再需要
 
         # 執行兩階段轉換：第一象限 → 窄角
         first_quad_angle, first_sign = self._convert_to_first_quadrant(base_angle, func)
@@ -583,20 +563,6 @@ class TrigAngleConversionGenerator(QuestionGenerator):
 
         return first_stage + second_stage
 
-    def _is_valid_result(self, result: Dict[str, Any]) -> bool:
-        """驗證生成結果的有效性
-
-        檢查生成的題目是否包含必要欄位且內容非空。
-
-        Args:
-            result (Dict[str, Any]): 生成的題目結果
-
-        Returns:
-            bool: 結果是否有效
-        """
-        required_keys = ['question', 'answer', 'explanation']
-        return (isinstance(result, dict) and
-                all(key in result and result[key] for key in required_keys))
 
     def get_grade(self) -> str:
         """獲取適用年級"""
@@ -628,3 +594,27 @@ class TrigAngleConversionGenerator(QuestionGenerator):
     def get_question_size(self) -> int:
         """獲取題目顯示大小"""
         return 2  # 中等大小，適合角度轉換題目
+
+    def get_subject(self) -> str:
+        """獲取科目，數學測驗生成器標準實作"""
+        return "數學"
+
+    def get_difficulty(self) -> str:
+        """獲取難度等級，三角函數角度轉換為中等難度"""
+        return "MEDIUM"
+
+    def get_figure_data_question(self) -> Optional[Dict[str, Any]]:
+        """獲取題目圖形數據，角度轉換題目通常無需圖形輔助"""
+        return None
+
+    def get_figure_data_explanation(self) -> Optional[Dict[str, Any]]:
+        """獲取解釋圖形數據，角度轉換題目通常無需圖形輔助"""
+        return None
+
+    def get_figure_position(self) -> str:
+        """獲取題目圖形位置，標準配置為右側"""
+        return "right"
+
+    def get_explanation_figure_position(self) -> str:
+        """獲取解釋圖形位置，標準配置為右側"""
+        return "right"

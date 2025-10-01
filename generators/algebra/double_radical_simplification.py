@@ -100,30 +100,29 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
 
         self.logger.info(f"建立有效組合 {len(self.valid_pairs)} 個（範圍1-{self.max_value}）")
 
-    def generate_question(self) -> Dict[str, Any]:
-        """生成雙重根式題目
+    def _generate_core_question(self) -> Dict[str, Any]:
+        """核心雙重根式題目生成邏輯
 
-        使用預篩選組合確保一次成功生成，失敗時提供預設題目。
+        使用預篩選組合確保確定性生成，採用預建有效組合清單避免數學無效性。
+        所有錯誤處理交由基類統一管理，此方法專注於核心生成邏輯。
+
+        Returns:
+            Dict[str, Any]: 包含完整題目資訊的字典
+
+        設計原理:
+            使用預篩選策略確保生成成功：
+            1. valid_pairs 已過濾所有無效組合
+            2. 隨機選擇保證教學多樣性
+            3. 確定性生成無需重試機制
         """
-        self.logger.info("開始生成雙重根式化簡題目")
+        # 從預篩選列表隨機選擇有效組合
+        a, b = random.choice(self.valid_pairs)
 
-        try:
-            # 從預篩選列表隨機選擇有效組合
-            a, b = random.choice(self.valid_pairs)
+        # 隨機決定加減法，兩種形式教學價值相同
+        is_addition = random.choice([True, False])
 
-            # 隨機決定加減法，兩種形式教學價值相同
-            is_addition = random.choice([True, False])
-
-            # 確定性生成，無需重試
-            result = self._generate_with_params(a, b, is_addition)
-
-            operation_type = "加法" if is_addition else "減法"
-            self.logger.info(f"生成成功: a={a}, b={b}, 運算={operation_type}")
-            return result
-
-        except Exception as e:
-            self.logger.error(f"生成失敗: {str(e)}")
-            return self._get_fallback_question()
+        # 確定性生成，無需重試
+        return self._generate_with_params(a, b, is_addition)
 
     def _generate_with_params(self, a: int, b: int, is_addition: bool) -> Dict[str, Any]:
         """使用給定參數生成題目

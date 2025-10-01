@@ -9,7 +9,7 @@
 主要功能：
 - ConfigUIFactory: 根據配置描述自動生成UI控件
 - ConfigValueCollector: 收集UI控件的配置值
-- 支援控件類型：select(下拉框)、checkbox(勾選框)、percentage_group(百分比分配)
+- 支援控件類型：select(下拉框)、checkbox(勾選框)、percentage_group(百分比分配)、number_input(數字輸入框)
 - 完整的配置驗證和錯誤處理機制
 
 使用範例：
@@ -27,7 +27,7 @@
 """
 
 from typing import Dict, Any, Optional
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QCheckBox, QPushButton, QSpinBox
 from PyQt5.QtCore import Qt
 
 from utils import get_logger
@@ -45,6 +45,7 @@ class ConfigUIFactory:
     - select: 下拉選擇框（QComboBox）
     - checkbox: 勾選框（QCheckBox）
     - percentage_group: 百分比分配對話框（QPushButton + PercentageConfigDialog）
+    - number_input: 數字輸入框（QSpinBox）
 
     Example:
         >>> factory = ConfigUIFactory()
@@ -150,6 +151,8 @@ class ConfigUIFactory:
             control = self._create_checkbox_widget(config)
         elif control_type == "percentage_group":
             control = self._create_percentage_group_widget(config)
+        elif control_type == "number_input":
+            control = self._create_number_input_widget(config)
         else:
             raise ValueError(f"不支援的控件類型: {control_type}")
 
@@ -234,6 +237,50 @@ class ConfigUIFactory:
         checkbox.setChecked(default_value)
 
         return checkbox
+
+    def _create_number_input_widget(self, config: Dict[str, Any]) -> QSpinBox:
+        """創建數字輸入控件
+
+        Args:
+            config: 必須包含 default, min, max 數值參數
+
+        Returns:
+            QSpinBox: 配置好範圍和預設值的數字輸入框
+
+        Raises:
+            ValueError: 配置參數缺失或格式錯誤
+        """
+        # 驗證必需參數
+        required_fields = ['default', 'min', 'max']
+        for field in required_fields:
+            if field not in config:
+                raise ValueError(f"number_input控件必須提供{field}參數")
+
+        default_value = config['default']
+        min_value = config['min']
+        max_value = config['max']
+
+        # 驗證數值類型和邏輯
+        for field, value in [('default', default_value), ('min', min_value), ('max', max_value)]:
+            if not isinstance(value, (int, float)):
+                raise ValueError(f"{field}參數必須為數值類型，收到: {type(value)}")
+
+        if min_value >= max_value:
+            raise ValueError(f"min({min_value})必須小於max({max_value})")
+
+        if not (min_value <= default_value <= max_value):
+            raise ValueError(f"default({default_value})必須在min({min_value})和max({max_value})之間")
+
+        # 創建 QSpinBox
+        spinbox = QSpinBox()
+        spinbox.setRange(int(min_value), int(max_value))
+        spinbox.setValue(int(default_value))
+
+        # 參考 category_widget.py 的樣式設定
+        spinbox.setFixedWidth(80)  # 比原始60稍寬，適合較大數值
+        spinbox.setAlignment(Qt.AlignCenter)
+
+        return spinbox
 
     def _create_percentage_group_widget(self, config: Dict[str, Any]) -> QPushButton:
         """創建百分比分配控件
@@ -449,6 +496,8 @@ class ConfigValueCollector:
                 # 沒有存儲值時使用預設值：確保向後兼容性
                 return self._get_percentage_group_defaults(config)
             return saved_values
+        elif control_type == "number_input" and isinstance(control, QSpinBox):
+            return control.value()
         else:
             raise ValueError(f"控件類型不匹配: 預期{control_type}，實際{type(control)}")
 

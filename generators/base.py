@@ -37,16 +37,73 @@ class QuestionGenerator(ABC):
     auto_register: ClassVar[bool] = True
 
     def __init__(self, options: Dict[str, Any] = None):
-        """初始化生成器"""
+        """初始化生成器
+
+        Args:
+            options: 生成器配置選項，用於自定義生成行為
+        """
         self.options = options or {}
+        self.logger = get_logger(self.__class__.__name__)
         logger.debug(f"初始化生成器: {self.__class__.__name__}")
 
-    @abstractmethod
     def generate_question(self) -> Dict[str, Any]:
-        """生成一個完整的題目
+        """標準生成方法，提供統一的錯誤處理機制
+
+        開發者無需覆蓋此方法，而是實現 _generate_core_question()。
+        此方法確保所有生成器都有一致的錯誤處理和日誌記錄。
 
         Returns:
             Dict包含: question, answer, explanation, metadata等
+        """
+        self.logger.info(f"開始生成{self.__class__.__name__}題目")
+        return self._safe_generate("題目生成")
+
+    def _safe_generate(self, description: str = "題目生成") -> Dict[str, Any]:
+        """標準安全生成模式，提供統一的異常處理
+
+        採用單次嘗試模式，避免重試機制掩蓋設計問題。
+        當核心生成邏輯失敗時，自動使用後備題目確保系統穩定性。
+
+        Args:
+            description: 生成階段描述，用於錯誤日誌
+
+        Returns:
+            成功時返回核心生成的題目，失敗時返回後備題目
+        """
+        try:
+            return self._generate_core_question()
+        except Exception as e:
+            # 詳細錯誤信息，包含異常類型和上下文
+            self.logger.error(f"{description}失敗: {type(e).__name__}: {str(e)}")
+
+            # 調試模式下提供完整堆疊信息，協助開發者排查問題
+            if hasattr(self, 'debug_mode') and self.debug_mode:
+                import traceback
+                self.logger.debug(f"錯誤堆疊: {traceback.format_exc()}")
+
+            return self._get_fallback_question()
+
+    @abstractmethod
+    def _generate_core_question(self) -> Dict[str, Any]:
+        """核心生成邏輯，子類必須實現
+
+        此方法應包含生成器的主要邏輯，採用確定性設計避免隨機失敗。
+        建議使用預篩選策略而非重試機制來確保生成成功。
+
+        Returns:
+            Dict包含: question, answer, explanation等核心內容
+        """
+        pass
+
+    @abstractmethod
+    def _get_fallback_question(self) -> Dict[str, Any]:
+        """後備題目，子類必須實現
+
+        當核心生成邏輯失敗時使用的安全題目，必須保證能夠正常工作。
+        應選擇簡單、可靠的題目，確保系統在任何情況下都能產生有效輸出。
+
+        Returns:
+            Dict包含: question, answer, explanation等完整內容
         """
         pass
 
