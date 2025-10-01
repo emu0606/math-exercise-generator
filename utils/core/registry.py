@@ -340,6 +340,41 @@ class GeneratorRegistry:
         """支援 in 操作符檢查生成器是否存在"""
         return key in self._generators
     
+    def get_generator_with_config_info(self, category: str, subcategory: str) -> Optional[Dict[str, Any]]:
+        """獲取生成器並提供完整配置資訊
+
+        統一配置資訊查詢入口，避免各處重複檢查邏輯。
+        失敗時返回None，確保向後相容性。
+
+        Args:
+            category: 題目類別
+            subcategory: 題目子類別
+
+        Returns:
+            包含generator_class、has_config、config_schema的字典，或None
+        """
+        generator_class = self.get_generator(category, subcategory)
+        if not generator_class:
+            return None
+
+        # 檢查配置能力：避免AttributeError，確保穩定性
+        has_config_method = hasattr(generator_class, 'has_config')
+        if not has_config_method:
+            return {'generator_class': generator_class, 'has_config': False, 'config_schema': None}
+
+        try:
+            has_config = generator_class.has_config()
+            config_schema = generator_class.get_config_schema() if has_config else None
+            return {
+                'generator_class': generator_class,
+                'has_config': has_config,
+                'config_schema': config_schema
+            }
+        except Exception as e:
+            # 配置檢查失敗不影響基本功能，記錄警告
+            logger.warning(f"檢查{category}/{subcategory}配置時失敗: {e}")
+            return {'generator_class': generator_class, 'has_config': False, 'config_schema': None}
+
     def __repr__(self) -> str:
         """註冊系統的字串表示"""
         return f"GeneratorRegistry(generators={len(self._generators)}, categories={len(self._category_map)})"

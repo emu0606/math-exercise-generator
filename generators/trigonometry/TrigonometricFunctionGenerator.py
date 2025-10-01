@@ -8,8 +8,8 @@
 
 主要特色：
 - 統一度數/弧度處理架構，避免UI重複選項問題
-- 智能難度控制：normal(3函數) vs hard(6函數)
-- 優化查詢表系統：一次性預計算所有特殊角度值
+- 難度控制：normal(3函數) vs hard(6函數)
+- 查詢表系統：一次性預計算所有特殊角度值
 - 四段式教學邏輯：定義→意義→座標→計算
 - 完整的未定義值處理和錯誤恢復機制
 
@@ -34,7 +34,7 @@
 """
 
 import random
-from typing import Dict, Any, List, Tuple, Union
+from typing import Dict, Any, List, Tuple, Union, Optional
 from sympy import sin, cos, tan, cot, sec, csc, pi, latex, simplify
 
 from utils import get_logger
@@ -45,61 +45,27 @@ from generators.base import QuestionGenerator, QuestionSize, register_generator
 class TrigonometricFunctionGenerator(QuestionGenerator):
     """三角函數值計算題目生成器
 
-    生成形如 sin(30°), cos(π/4), tan(60°) 的三角函數計算題目。
-    統一處理度數和弧度模式，內部使用度數計算確保精確性，根據配置調整顯示格式。
-
-
-    Args:
-        options (Dict[str, Any], optional): 生成器配置選項
-            angle_mode (str): 角度顯示模式 'degree'/'radian'/'mixed'，預設'degree'
-            difficulty (str): 難度等級 'normal'/'hard'，預設'normal'
-
-    Returns:
-        Dict[str, Any]: 包含完整題目資訊的字典，包含以下欄位：
-            question (str): 題目LaTeX字串
-            answer (str): 答案LaTeX字串
-            explanation (str): 四段式解釋LaTeX字串
-            size (int): 題目顯示大小（QuestionSize.SMALL = 1）
-            difficulty (str): 難度等級
-            category (str): 主類別（三角函數）
-            subcategory (str): 子類別（三角函數值計算）
-            grade (str): 年級分類（G10S2 = 高一下學期）
-            figure_data_question (Dict): 題目圖形配置
-            figure_data_explanation (Dict): 詳解圖形配置
-            figure_position (str): 圖形位置
-            explanation_figure_position (str): 詳解圖形位置
-
-    Example:
-        >>> # 基本度數模式
-        >>> generator = TrigonometricFunctionGenerator()
-        >>> question = generator.generate_question()
-        >>> print(question['question'])
-        $\\sin(30^\\circ) = $
-        >>> print(question['answer'])
-        $\\frac{1}{2}$
-
-        >>> # 弧度模式
-        >>> radian_gen = TrigonometricFunctionGenerator({'angle_mode': 'radian'})
-        >>> question = radian_gen.generate_question()
-        >>> print(question['question'])
-        $\\cos(\\frac{\\pi}{6}) = $
-
-        >>> # 困難模式（包含cot, sec, csc）
-        >>> hard_gen = TrigonometricFunctionGenerator({'difficulty': 'hard'})
-        >>> question = hard_gen.generate_question()
-        >>> # 可能生成 csc(30°) = 2 等題目
+    生成特殊角度的三角函數計算題目，支援度數/弧度/混合模式。
+    使用預計算查詢表提升性能，sympy確保數學精確性。
 
     Attributes:
-        logger: 日誌記錄器，用於追蹤生成過程
-        functions (List): 根據難度選擇的三角函數列表
-        angles_degrees (List[int]): 預定義的特殊角度列表（度數）
-        angle_mode (str): 角度顯示模式配置
-        trig_values (Dict): 預建構的三角函數值查詢表
+        functions (List[Any]): 根據配置選擇的三角函數列表
+        angles_degrees (List[int]): 預定義特殊角度列表
+        angle_mode (str): 角度顯示模式 'degree'/'radian'/'mixed'
+        trig_values (Dict): 預建構的函數值查詢表
 
-    Note:
-        使用sympy確保數學計算的精確性，
-        所有特殊角度的三角函數值都以最簡根式形式呈現。查詢表設計
-        提供高效的數值查詢功能。
+    Example:
+        >>> # 基本使用
+        >>> gen = TrigonometricFunctionGenerator()
+        >>> question = gen.generate_question()
+        >>> print(question['question'])
+        $\\sin(30^\\circ) = $
+
+        >>> # 弧度模式
+        >>> gen = TrigonometricFunctionGenerator({'angle_mode': 'radian'})
+        >>> question = gen.generate_question()
+        >>> print(question['question'])
+        $\\cos(\\frac{\\pi}{6}) = $
     """
 
     # 使用類內模版組織，避免外部依賴和模版散落問題
@@ -150,8 +116,7 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
     def __init__(self, options: Dict[str, Any] = None):
         """初始化三角函數計算題目生成器
 
-        使用新架構的參數驗證和配置系統，建立三角函數計算的
-        完整數學框架，採用標準化的組織架構。
+        設定三角函數計算的參數和配置系統。
 
         Args:
             options (Dict[str, Any], optional): 生成器配置選項
@@ -201,7 +166,10 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
         # 預建構三角函數值查詢表，優化計算效率
         self.trig_values = self._build_unified_trig_table()
 
-        self.logger.info(f"統一三角函數生成器初始化完成 - 模式: {self.angle_mode}, 函數範圍: {function_scope}")
+        # 預篩選有效組合，替代重試機制
+        self.valid_combinations = self._build_valid_combinations()
+
+        self.logger.info(f"統一三角函數生成器初始化完成 - 模式: {self.angle_mode}, 函數範圍: {function_scope}, 有效組合: {len(self.valid_combinations)}")
 
     def _is_undefined(self, func: Any, angle_deg: int) -> bool:
         """數學常識驅動的未定義值判斷器
@@ -253,14 +221,9 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
                 鍵: (sympy函數物件, 角度值) 的元組
                 值: sympy精確計算結果或"ERROR"（未定義情況）
 
-        性能優勢：
-            - 時間複雜度：從每次O(log n)的sympy計算降到O(1)的查表
-            - 空間換時間：預計算102個值（17角度×6函數），換取生成時的極速響應
-            - 數學精確性：sympy確保所有特殊角度值以最簡根式形式存儲
-
         設計原因：
             使用預計算查詢表而非即時計算，因為：
-            1. 三角函數值計算頻繁，預計算有明顯性能優勢
+            1. 三角函數值計算頻繁，預計算有明顯效益
             2. 特殊角度值固定，查詢表空間成本低
             3. 符合數學教學中的"特殊角度背誦"習慣
 
@@ -285,6 +248,38 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
                     table[(func, angle_deg)] = value
 
         return table
+
+    def _build_valid_combinations(self) -> List[Tuple[int, Any]]:
+        """預篩選有效的角度-函數組合
+
+        建立所有有效的(角度, 函數)組合清單，過濾掉未定義值。
+        將重試機制轉換為確定性選擇，從O(n)重試優化為O(1)直接選擇。
+
+        Returns:
+            List[Tuple[int, Any]]: 有效組合清單
+                元組格式: (角度值, sympy函數物件)
+
+        設計原理:
+            使用預篩選策略而非重試機制的原因：
+            1. 特殊角度數量有限，預篩選空間成本低
+            2. 確定性生成避免重試的性能浪費
+            3. 符合數學教學中的"有效範圍"概念
+
+        實現邏輯:
+            遍歷所有(角度, 函數)組合，篩選查詢表中非"ERROR"的項目，
+            確保每次選擇都能產生有效的數學題目。
+        """
+        valid_combinations = []
+
+        for angle_deg in self.angles_degrees:
+            for func in self.functions:
+                # 從查詢表檢查此組合是否有效
+                value = self.trig_values.get((func, angle_deg))
+                if value != "ERROR":
+                    valid_combinations.append((angle_deg, func))
+
+        self.logger.info(f"預篩選完成：{len(valid_combinations)} 個有效組合（總共 {len(self.angles_degrees) * len(self.functions)} 個可能組合）")
+        return valid_combinations
 
     def _get_unit_circle_coordinates(self, angle_deg: int) -> Tuple[Any, Any]:
         """獲取單位圓上指定角度的精確座標點
@@ -399,46 +394,81 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
             'options': {'scale': 1.2}  # 詳解圖稍大
         }
 
-    def _get_standard_metadata(self) -> Dict[str, Any]:
-        """提供統一的元數據處理
+    def get_grade(self) -> str:
+        """獲取適用年級"""
+        return "G10S2"  # 高一下學期（三角函數）
 
-        提供統一的元數據處理，確保所有題目都包含完整的分類信息。
+    def get_figure_data_question(self) -> Optional[Dict[str, Any]]:
+        """獲取題目圖形數據
+
+        根據當前生成的角度和函數參數建構單位圓圖形配置。
+        圖形包含角度標記、函數高亮和基礎視覺元素。
 
         Returns:
-            Dict[str, Any]: 標準化的元數據字典
+            Optional[Dict[str, Any]]: 圖形配置字典，包含以下鍵值：
+                type (str): 圖形類型 'standard_unit_circle'
+                params (Dict): 圖形參數，包含角度、顯示選項等
+                options (Dict): 渲染選項，如縮放比例
+
+            如果當前無生成參數則返回None確保系統穩定性。
 
         Note:
-            包含年級分類 G10S2（高一下學期），符合教育標準。
-            統一處理避免重複代碼，確保元數據的一致性。
+            依賴 generate_question() 過程中設置的 _current_angle 和 _current_func。
+            圖形系統直接接受度數參數，無需角度轉換。
+
+        Example:
+            >>> gen = TrigonometricFunctionGenerator()
+            >>> gen._current_angle = 30
+            >>> gen._current_func = 'sin'
+            >>> figure_data = gen.get_figure_data_question()
+            >>> figure_data['params']['angle']
+            30
         """
-        return {
-            "size": self.get_question_size(),
-            "difficulty": self.get_difficulty(),
-            "category": self.get_category(),
-            "subcategory": self.get_subcategory(),
-            "grade": "G10S2",  # 新增年級分類：高一下學期（三角函數）
-        }
+        if hasattr(self, '_current_angle') and hasattr(self, '_current_func'):
+            return self._build_figure_data(self._current_angle, self._current_func)
+        return None
+
+    def get_figure_data_explanation(self) -> Optional[Dict[str, Any]]:
+        """獲取解釋圖形數據
+
+        返回詳解專用的單位圓圖形，含更豐富的視覺元素。
+        比題目圖形增加座標顯示、點標記、半徑線等。
+
+        Returns:
+            Optional[Dict[str, Any]]: 詳解圖形配置字典，包含：
+                type (str): 'standard_unit_circle'
+                params (Dict): 詳解模式參數，variant='explanation'
+                options (Dict): 渲染選項，scale=1.2
+
+        Note:
+            依賴當前生成狀態，若無則返回None。
+            詳解圖形比題目圖形提供更多視覺資訊。
+        """
+        if hasattr(self, '_current_angle') and hasattr(self, '_current_func'):
+            return self._build_explanation_figure(self._current_angle, self._current_func)
+        return None
 
     def _generate_core_logic(self, angle_deg: int, func: Any, value: Union[Any, str]) -> Dict[str, Any]:
         """建構完整的題目回應數據
 
-        根據角度模式決定顯示格式，整合題目、答案、解釋和圖形數據。
-        處理三種角度模式（degree/radian/mixed）的顯示邏輯。
+        設置當前生成參數並建構題目，圖形數據由基類統一處理。
+
+        設計變更:
+            - 移除直接圖形設置，避免與基類metadata衝突
+            - 新增狀態保存機制，供圖形方法使用
+            - 簡化返回邏輯，依賴基類統一處理
 
         Args:
-            angle_deg: 角度值（度數）
-            func: 三角函數物件
-            value: 計算結果或"ERROR"
+            angle_deg (int): 角度值（度數）
+            func (Any): sympy三角函數物件
+            value (Union[Any, str]): 計算結果或"ERROR"
 
         Returns:
-            Dict[str, Any]: 完整的題目數據
-
-        Note:
-            整合所有顯示相關邏輯：
-            - 角度顯示格式決策（度數/弧度）
-            - 題目和答案的LaTeX格式化
-            - 圖形和元數據的完整組裝
+            Dict[str, Any]: 題目數據字典，圖形由基類metadata處理
         """
+        # 設置當前參數供圖形方法使用
+        self._current_angle = angle_deg
+        self._current_func = func.__name__
         # 角度模式處理邏輯
         if self.angle_mode == "mixed":
             display_as_radian = random.choice([True, False])
@@ -460,16 +490,12 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
         else:
             answer = f"${latex(value)}$"
 
-        # 使用標準化的元數據處理
+        # 簡化返回邏輯，圖形數據由基類統一處理
         return {
             "question": question,
             "answer": answer,
             "explanation": self._generate_explanation(func.__name__, angle_deg, value, display_as_radian),
-            "figure_data_question": self._build_figure_data(angle_deg, func.__name__),
-            "figure_data_explanation": self._build_explanation_figure(angle_deg, func.__name__),
-            "figure_position": "right",
-            "explanation_figure_position": "right",
-            **self._get_standard_metadata()  # 標準化元數據處理
+            **self._get_standard_metadata()  # 統一metadata處理，包含圖形數據
         }
 
     def _get_fallback_question(self) -> Dict[str, Any]:
@@ -491,42 +517,27 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
             **self._get_standard_metadata()  # 使用標準化元數據
         }
 
-    def generate_question(self) -> Dict[str, Any]:
-        """生成一個三角函數計算題目
+    def _generate_core_question(self) -> Dict[str, Any]:
+        """核心三角函數題目生成邏輯
 
-        使用現代化的重試機制，創建數學上有效且教育價值高的
-        三角函數計算題目，確保數學有效性和教育價值。
+        使用預篩選確定性生成，從有效組合中直接選擇，避免重試機制。
+        採用查詢表系統確保數學精確性和教學邏輯一致性。
 
         Returns:
             Dict[str, Any]: 包含完整題目資訊的字典
 
-        Note:
-            使用重試機制和難度篩選邏輯，確保生成的題目有教育價值。
+        設計原理:
+            使用預篩選策略而非重試機制：
+            1. 從 valid_combinations 直接選擇，保證成功
+            2. 保持查詢表系統的高效性
+            3. 維持所有教學邏輯和圖形支援不變
         """
-        self.logger.info(f"開始生成三角函數題目 ({self.angle_mode})")
+        # 從預篩選的有效組合中直接選擇，保證成功
+        angle_deg, func = random.choice(self.valid_combinations)
+        value = self.trig_values.get((func, angle_deg))  # 從查詢表獲取值
 
-        for attempt in range(100):
-            try:
-                # 隨機選擇角度和函數
-                angle_deg = random.choice(self.angles_degrees)
-                func = random.choice(self.functions)
-                value = self.trig_values.get((func, angle_deg))  # 從查詢表獲取值
-
-                # 根據難度築選未定義值：normal避免未定義，hard允許未定義
-                if value == "ERROR":
-                    if len(self.functions) == 3:  # normal難度判斷
-                        continue  # 跳過未定義值，重新選擇
-
-                # 建構完整的題目回應數據
-                return self._generate_core_logic(angle_deg, func, value)
-
-            except Exception as e:
-                self.logger.warning(f"生成嘗試 {attempt+1} 失敗: {str(e)}")
-                continue
-
-        # 所有嘗試失敗時使用後備機制確保系統穩定
-        self.logger.warning("所有生成嘗試失敗，使用預設題目")
-        return self._get_fallback_question()
+        # 建構完整的題目回應數據
+        return self._generate_core_logic(angle_deg, func, value)
 
     def get_category(self) -> str:
         """獲取題目主類別
@@ -562,3 +573,56 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
             int: 題目大小（QuestionSize.SMALL = 1）
         """
         return QuestionSize.SMALL.value
+
+    def get_subject(self) -> str:
+        """獲取科目，數學測驗生成器標準實作"""
+        return "數學"
+
+    def get_figure_position(self) -> str:
+        """獲取題目圖形位置，單位圓圖形標準配置為右側"""
+        return "right"
+
+    def get_explanation_figure_position(self) -> str:
+        """獲取解釋圖形位置，單位圓圖形標準配置為右側"""
+        return "right"
+
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Dict[str, Any]]:
+        """取得三角函數生成器配置描述
+
+        定義用戶可調整的配置選項，UI系統將自動生成對應控件。
+        支援函數範圍和角度模式的動態配置，提升教學靈活性。
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 配置選項描述字典
+
+        Example:
+            >>> schema = TrigonometricFunctionGenerator.get_config_schema()
+            >>> schema['function_scope']['options']
+            ['basic', 'extended']
+            >>> schema['angle_mode']['default']
+            'degree'
+
+        Note:
+            配置選項說明：
+            - function_scope: 控制可用函數範圍，basic限制在教學基礎函數
+            - angle_mode: 決定題目中角度的顯示格式，支援混合模式
+        """
+        return {
+            "function_scope": {
+                "type": "select",
+                "label": "函數範圍",
+                "default": "basic",
+                "options": ["basic", "extended"],
+                # 說明基本與擴展範圍的差異，幫助教師選擇適合的教學內容
+                "description": "basic(sin,cos,tan) vs extended(+cot,sec,csc)"
+            },
+            "angle_mode": {
+                "type": "select",
+                "label": "角度模式",
+                "default": "degree",
+                "options": ["degree", "radian", "mixed"],
+                # 解釋各模式的教學用途，指導教師根據教學進度選擇
+                "description": "degree(角度制) radian(弧度制) mixed(混合)"
+            }
+        }

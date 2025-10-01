@@ -152,9 +152,11 @@ QCheckBox::indicator:indeterminate {
 
 /* 類別框架樣式 */
 QFrame#categoryFrame {
-    background-color: #ecf0f1;
+    background-color: #d5dbdb;  /* 更深灰色，強化視覺層級 */
+    border-left: 3px solid #3498db;  /* 藍色左邊框指示主類別 */
     border-radius: 4px;
     margin: 2px 0;
+    font-weight: 500;  /* 稍微加粗字體 */
 }
 
 QFrame#categoryFrame:hover {
@@ -163,9 +165,10 @@ QFrame#categoryFrame:hover {
 
 /* 子類別框架樣式 */
 QFrame#subcategoryFrame {
-    background-color: white;
+    background-color: #fdfdfd;  /* 純白背景 */
+    border-left: 2px solid #bdc3c7;  /* 淺灰左邊框指示次類別 */
     border-radius: 4px;
-    margin: 1px 0;
+    margin: 1px 0 1px 8px;  /* 左邊額外視覺縮排 */
 }
 
 QFrame#subcategoryFrame:hover {
@@ -181,6 +184,41 @@ QCheckBox#categoryCheckbox {
 /* 子類別勾選框樣式 */
 QCheckBox#subcategoryCheckbox {
     color: #34495e;
+}
+
+/* 配置按鈕樣式 */
+QPushButton#configButton {
+    background-color: transparent;
+    color: #5d6d6e;
+    border: none;
+    border-radius: 4px;
+    padding: 0px;
+    font-size: 20px;
+    font-weight: normal;
+    min-width: 28px;
+    min-height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+}
+
+/* 配置佔位符樣式 - 透明但佔位 */
+QWidget#configPlaceholder {
+    background-color: transparent;
+    border: none;
+    min-width: 28px;
+    min-height: 28px;
+    max-width: 28px;
+    max-height: 28px;
+}
+
+QPushButton#configButton:hover {
+    color: #4a5759;
+    background-color: #f8f9fa;
+}
+
+QPushButton#configButton:pressed {
+    color: #34495e;
+    background-color: #ecf0f1;
 }
 
 /* 捲動區域樣式 */
@@ -245,4 +283,28 @@ QStatusBar QPushButton#iconButton:hover {
 
 QStatusBar QPushButton#iconButton:pressed {
     background-color: #d5dbdb;
+}
+
+/* 配置對話框樣式 */
+QDialog#configDialog {
+    background-color: #ffffff;
+    border: 1px solid #bdc3c7;
+}
+
+QDialog#configDialog QPushButton {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-size: 14px;
+    min-width: 60px;
+}
+
+QDialog#configDialog QPushButton:hover {
+    background-color: #2980b9;
+}
+
+QDialog#configDialog QPushButton:pressed {
+    background-color: #21618c;
 }

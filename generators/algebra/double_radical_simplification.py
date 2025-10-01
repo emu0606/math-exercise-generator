@@ -10,7 +10,7 @@
 
 import math
 import random
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from sympy import sqrt, expand, latex
 
@@ -29,9 +29,6 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
     Args:
         options (Dict[str, Any], optional): 生成器配置選項
             max_value (int): 根式內數值最大範圍，預設25
-            max_attempts (int): 最大嘗試次數，預設100
-            allow_addition (bool): 是否允許加法形式，預設True
-            allow_subtraction (bool): 是否允許減法形式，預設True
 
     Returns:
         Dict[str, Any]: 包含完整題目資訊的字典
@@ -77,113 +74,83 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
         super().__init__(options)
         self.logger = get_logger(self.__class__.__name__)
 
-        # 使用options.get()提供預設值，避免KeyError且比Pydantic驗證更簡潔
+        # 配置處理
         options = options or {}
         self.max_value = options.get('max_value', 25)
-        self.max_attempts = options.get('max_attempts', 100)
-        self.allow_addition = options.get('allow_addition', True)
-        self.allow_subtraction = options.get('allow_subtraction', True)
 
-        # 確保至少有一種運算形式可用
-        if not (self.allow_addition or self.allow_subtraction):
-            self.logger.warning("至少需要允許一種運算形式，自動啟用加法")
-            self.allow_addition = True
+        # 建立有效數值組合，避免生成過程中的重複計算
+        self._build_valid_combinations()
 
-    def generate_question(self) -> Dict[str, Any]:
-        """生成雙重根式題目
+    def _build_valid_combinations(self):
+        """建立所有有效的數值組合
 
-        使用異常處理確保生成穩定性，失敗時提供預設題目。
+        預先篩選出所有數學上有效的 (a,b) 組合，避免生成時重複檢查。
+        過濾條件：a*b 不能是完全平方數，否則失去雙重根式教學價值。
         """
-        self.logger.info("開始生成雙重根式化簡題目")
+        from itertools import combinations
 
-        for attempt in range(self.max_attempts):
-            try:
-                result = self._generate_core_logic()
-                if result and self._is_valid_result(result):
-                    self.logger.info(f"生成成功（第 {attempt + 1} 次嘗試）")
-                    return result
-            except Exception as e:
-                self.logger.warning(f"生成嘗試 {attempt + 1} 失敗: {str(e)}")
-                continue
+        self.valid_pairs = [
+            (max(a, b), min(a, b))  # 確保 a >= b，使減法結果為正
+            for a, b in combinations(range(1, self.max_value + 1), 2)
+            if not self._is_perfect_square(a * b)
+        ]
 
-        # 當所有嘗試都失敗時，使用預設題目防止系統崩潰
-        self.logger.warning("達到最大嘗試次數，使用預設題目")
-        return self._get_fallback_question()
+        if not self.valid_pairs:
+            raise ValueError(f"在範圍1-{self.max_value}內找不到有效組合")
 
-    def _generate_core_logic(self) -> Dict[str, Any]:
-        """核心數學邏輯生成
+        self.logger.info(f"建立有效組合 {len(self.valid_pairs)} 個（範圍1-{self.max_value}）")
 
-        雙重根式化簡原理：
-        給定答案形式 √a ± √b，透過平方展開得到題目形式
-        (√a ± √b)² = a + b ± 2√(ab) = c ± d√e 形式的嵌套根式
+    def _generate_core_question(self) -> Dict[str, Any]:
+        """核心雙重根式題目生成邏輯
 
-        協調式決策流程確保：
-        1. 數值選擇與運算類型的協調性
-        2. 完全平方數檢查避免教學價值流失
-        3. 數學條件正確性（減法時 a ≥ b）
+        使用預篩選組合確保確定性生成，採用預建有效組合清單避免數學無效性。
+        所有錯誤處理交由基類統一管理，此方法專注於核心生成邏輯。
+
+        Returns:
+            Dict[str, Any]: 包含完整題目資訊的字典
+
+        設計原理:
+            使用預篩選策略確保生成成功：
+            1. valid_pairs 已過濾所有無效組合
+            2. 隨機選擇保證教學多樣性
+            3. 確定性生成無需重試機制
         """
-        # 整體重試邏輯：所有條件必須協調滿足
-        for attempt in range(self.max_attempts):
-            try:
-                # 步驟1: 隨機選擇基礎數值對
-                # 使用 random.sample 確保 a ≠ b，避免退化情況
-                values = list(range(1, self.max_value + 1))
-                a, b = random.sample(values, 2)
+        # 從預篩選列表隨機選擇有效組合
+        a, b = random.choice(self.valid_pairs)
 
-                # 步驟2: 預防性大小調整，確保減法運算的數學正確性
-                # 無論後續選擇加法還是減法，都能產生有效的正數結果
-                if a < b:
-                    a, b = b, a  # 確保 a ≥ b，使得 √a - √b ≥ 0
+        # 隨機決定加減法，兩種形式教學價值相同
+        is_addition = random.choice([True, False])
 
-                # 步驟3: 運算類型的隨機決策
-                # 根據用戶配置決定允許的運算類型
-                operation_choices = []
-                if self.allow_addition:
-                    operation_choices.append(True)
-                if self.allow_subtraction:
-                    operation_choices.append(False)
+        # 確定性生成，無需重試
+        return self._generate_with_params(a, b, is_addition)
 
-                if not operation_choices:
-                    # 安全機制：如果配置錯誤，默認允許加法
-                    operation_choices = [True]
+    def _generate_with_params(self, a: int, b: int, is_addition: bool) -> Dict[str, Any]:
+        """使用給定參數生成題目
 
-                is_addition = random.choice(operation_choices)
+        直接使用預篩選的有效參數生成題目，確保數學正確性。
 
-                # 步驟4: 教學價值驗證 - 完全平方數檢查
-                # 如果 a*b 是完全平方數，則 2√(ab) 會簡化為整數
-                # 導致題目失去雙重根式的教學意義，需要重新生成
-                if self._is_perfect_square(a * b):
-                    self.logger.debug(f"嘗試 {attempt + 1}: a={a}, b={b}, ab={a*b} 是完全平方數，重新生成")
-                    continue  # 重新整個流程，不是部分重試
+        Args:
+            a: 第一個根式的被開方數（較大值）
+            b: 第二個根式的被開方數（較小值）
+            is_addition: 是否為加法形式
 
-                # 步驟5: 生成數學正確的題目
-                # 使用Sympy確保數學運算的精確性
-                answer_expr = sqrt(a) + sqrt(b) if is_addition else sqrt(a) - sqrt(b)
-                squared_expr = expand(answer_expr**2)
+        Returns:
+            Dict[str, Any]: 完整的題目資訊
+        """
+        # 使用 Sympy 確保數學運算精確性
+        answer_expr = sqrt(a) + sqrt(b) if is_addition else sqrt(a) - sqrt(b)
+        squared_expr = expand(answer_expr**2)
 
-                # 生成完整題目字串（含前綴和包裝）
-                question = self._format_question_with_ordered_latex(squared_expr)
+        # 生成各部分內容
+        question = self._format_question_with_ordered_latex(squared_expr)
+        answer = self._format_answer_with_original_params(a, b, is_addition)
+        explanation = self._build_explanation_with_original_params(
+            squared_expr, answer_expr, a, b, is_addition)
 
-                # 使用原始參數構造答案，避免Sympy排序問題
-                answer = self._format_answer_with_original_params(a, b, is_addition)
-
-                # 使用原有參數 a, b, is_addition 生成解釋
-                explanation = self._build_explanation_with_original_params(squared_expr, answer_expr, a, b, is_addition)
-
-                self.logger.info(f"生成成功（第 {attempt + 1} 次嘗試）: a={a}, b={b}, 運算={'加法' if is_addition else '減法'}")
-                return {
-                    **self._get_core_content(question, answer, explanation),
-                    **self._get_standard_metadata()
-                }
-
-            except Exception as e:
-                self.logger.warning(f"生成嘗試 {attempt + 1} 失敗: {str(e)}")
-                continue
-
-        # 如果所有嘗試都失敗，使用預設題目確保系統穩定性
-        self.logger.warning("達到最大嘗試次數，使用預設題目")
-        return self._get_fallback_question()
-
+        return {
+            **self._get_core_content(question, answer, explanation),
+            **self._get_standard_metadata()
+        }
 
     def _format_question_with_ordered_latex(self, squared_expr) -> str:
         """生成完整題目字串，包含題目前綴和外層根號包裝
@@ -407,20 +374,6 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
             # 可以化簡：factor√remaining
             return f"{factor}\\sqrt{{{remaining}}}"
 
-    def _is_valid_result(self, result: Dict[str, Any]) -> bool:
-        """驗證結果有效性
-
-        檢查生成的題目是否包含必要欄位且內容非空。
-
-        Args:
-            result (Dict[str, Any]): 生成的題目結果
-
-        Returns:
-            bool: 結果是否有效
-        """
-        required_keys = ['question', 'answer', 'explanation']
-        return all(key in result and result[key] for key in required_keys)
-
     def _is_perfect_square(self, n: int) -> bool:
         """檢查完全平方數
 
@@ -457,26 +410,9 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
             "explanation": explanation
         }
 
-    def _get_standard_metadata(self) -> Dict[str, Any]:
-        """獲取標準元數據
-
-        提供PDF生成所需的完整元數據，包括尺寸、難度、分類等資訊。
-
-        Returns:
-            Dict[str, Any]: 包含標準元數據的字典
-        """
-        return {
-            "size": QuestionSize.WIDE.value,  # 雙重根式較複雜，需要寬版面顯示
-            "difficulty": "MEDIUM",
-            "category": self.get_category(),
-            "subcategory": self.get_subcategory(),
-            "grade": "G10S1",  # 年級分類：十年級上學期（高中代數）
-            # 預留圖形相關欄位，確保PDF兼容
-            "figure_data_question": None,
-            "figure_data_explanation": None,
-            "figure_position": "right",
-            "explanation_figure_position": "right"
-        }
+    def get_grade(self) -> str:
+        """獲取適用年級"""
+        return "G10S1"  # 年級分類：十年級上學期（高中代數）
 
     def _get_fallback_question(self) -> Dict[str, Any]:
         """獲取預設題目
@@ -518,3 +454,60 @@ class DoubleRadicalSimplificationGenerator(QuestionGenerator):
             str: 子類別名稱
         """
         return "重根號練習"
+
+    def get_subject(self) -> str:
+        """獲取科目，數學測驗生成器標準實作"""
+        return "數學"
+
+    def get_difficulty(self) -> str:
+        """獲取難度等級，雙重根式化簡為中等難度"""
+        return "MEDIUM"
+
+    def get_figure_data_question(self) -> Optional[Dict[str, Any]]:
+        """獲取題目圖形數據，代數題目通常無需圖形輔助"""
+        return None
+
+    def get_figure_data_explanation(self) -> Optional[Dict[str, Any]]:
+        """獲取解釋圖形數據，代數題目通常無需圖形輔助"""
+        return None
+
+    def get_figure_position(self) -> str:
+        """獲取題目圖形位置，標準配置為右側"""
+        return "right"
+
+    def get_explanation_figure_position(self) -> str:
+        """獲取解釋圖形位置，標準配置為右側"""
+        return "right"
+
+    @classmethod
+    def get_config_schema(cls) -> Dict[str, Dict[str, Any]]:
+        """取得雙重根式生成器配置描述，供UI動態生成配置介面
+
+        定義用戶可調整的配置選項，UI系統將自動生成對應控件。
+        主要提供數值範圍控制，讓教師可根據學生程度調整題目難度。
+
+        Returns:
+            Dict[str, Dict[str, Any]]: 配置選項描述字典
+
+        Example:
+            >>> schema = DoubleRadicalSimplificationGenerator.get_config_schema()
+            >>> schema['max_value']['type']
+            'number_input'
+            >>> schema['max_value']['default']
+            25
+
+        Note:
+            配置選項說明：
+            - max_value: 控制根式內數值的最大範圍，影響題目的數值複雜度
+              較小值(10-15)適合初學者，較大值(25-50)適合進階練習
+        """
+        return {
+            "max_value": {
+                "type": "number_input",
+                "label": "數值上限",
+                "default": 25,
+                "min": 5,
+                "max": 100,
+                "description": "控制生成答案數字的最大值"
+            }
+        }

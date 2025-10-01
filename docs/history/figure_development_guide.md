@@ -1,4 +1,7 @@
-# 數學測驗生成器 - 圖形生成器開發指南 (新架構版)
+# 數學測驗生成器 - 圖形生成器開發指南 (過期版本)
+
+> ⚠️ **此版本已過期** (2025-09-28)：本文檔保留作為歷史參考，新版本正在重構中。
+> 新版本將簡化結構，移除混淆術語，並更清楚說明圖形生成器在數學測驗系統中的角色。
 
 本文檔提供了如何在新模組化架構下為數學測驗生成器開發新的圖形生成器的詳細指引。
 
@@ -78,279 +81,150 @@ class MyFigureGenerator:
     """
 ```
 
-## 🔧 開發新的圖形生成器
+## 🎆 **5分鐘快速入門** - 必讀！
 
-### 1. 創建生成器類別
+在深入研究之前，先讓我們用 5 分鐘建立一個最簡單的圖形生成器：
 
-在 `generators/` 目錄下創建新的生成器，必須包含完整的 docstring：
+### 🚀 **Hello World 圖形生成器**
 
-### 2. 新架構生成器範例
-
-在 `generators/` 目錄下創建新的生成器，使用新的統一 API：
+在 `figures/` 目錄下創建 `my_first_figure.py`：
 
 ```python
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
-數學測驗生成器 - 我的新圖形生成器
-
-此模組實現了新架構下的圖形生成器，整合了幾何計算、TikZ 渲染等功能。
-使用統一的 utils API 進行數學計算和圖形渲染。
+我的第一個圖形生成器 - Hello World
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
+from .base import FigureGenerator
+from . import register_figure_generator
+
+@register_figure_generator
+class MyFirstFigureGenerator(FigureGenerator):
+    """最簡單的圖形生成器 - 繪製一個簡單的圓形"""
+
+    @classmethod
+    def get_name(cls) -> str:
+        return "my_first_figure"
+
+    def generate_tikz(self, params: Dict[str, Any]) -> str:
+        # 獲取參數，設定預設值
+        radius = params.get('radius', 1.0)
+        color = params.get('color', 'blue')
+
+        # 生成 TikZ 代碼
+        return f"\\draw[{color}] (0,0) circle ({radius});"
+```
+
+### 🎩 **立即測試**
+
+```python
+# 在專案根目錄執行
+py -c "
+from figures import get_figure_generator
+gen = get_figure_generator('my_first_figure')()
+print(gen.generate_tikz({'radius': 2, 'color': 'red'}))
+"
+
+# 輸出： \draw[red] (0,0) circle (2);
+```
+
+**恩喜您！您已經成功創建了第一個圖形生成器！** 🎉
+
+---
+
+## 🔧 開發進階圖形生成器
+
+### 1. 創建完整功能的生成器
+
+為了建立具備完整功能的生成器，我們需要：
+
+### 2. 使用 Pydantic 參數驗證的進階範例
+
+```python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+我的進階圖形生成器 - 使用 Pydantic 參數驗證
+"""
+
+from typing import Dict, Any
 from pydantic import BaseModel, Field, validator
+from utils import construct_triangle, get_centroid, Point, get_logger
+from .base import FigureGenerator
+from . import register_figure_generator
 
-# 導入新架構的統一 API
-from utils import (
-    construct_triangle, get_centroid, Point,
-    global_config, get_logger
-)
-from utils.core.registry import registry
-from utils.rendering import FigureRenderer
-
-# 模組日誌器
 logger = get_logger(__name__)
 
-class MyFigureParams(BaseModel):
-    """我的圖形參數 Pydantic 模型
-    
-    使用 Phase 4 標準的 Pydantic 進行參數驗證，提供強大的類型檢查和自動驗證。
-    參考 Phase 4 中 TrigonometricFunctionGeneratorRadius 的參數驗證最佳實踐。
-    
-    Attributes:
-        side_a (float): 三角形邊長 a
-        side_b (float): 三角形邊長 b  
-        side_c (float): 三角形邊長 c
-        show_centroid (bool): 是否顯示質心
-        variant (str): 變體類型 ('question' 或 'explanation')
-        
-    Example:
-        >>> params = MyFigureParams(side_a=3, side_b=4, side_c=5)
-        >>> params.side_a
-        3.0
-        >>> params = MyFigureParams(side_a=-1, side_b=4, side_c=5)  # 會觸發驗證錯誤
-    """
-    side_a: float = Field(
-        default=3.0,
-        gt=0,
-        le=100.0,
-        description="三角形邊長 a，必須大於 0"
-    )
-    side_b: float = Field(
-        default=4.0, 
-        gt=0,
-        le=100.0,
-        description="三角形邊長 b，必須大於 0"
-    )
-    side_c: float = Field(
-        default=5.0,
-        gt=0, 
-        le=100.0,
-        description="三角形邊長 c，必須大於 0"
-    )
-    show_centroid: bool = Field(
-        default=False,
-        description="是否顯示質心"
-    )
-    variant: str = Field(
-        default="question",
-        description="圖形變體類型"
-    )
-    
-    @validator('variant')
-    def validate_variant(cls, v):
-        """驗證變體類型"""
-        valid_variants = ['question', 'explanation']
-        if v not in valid_variants:
-            raise ValueError(f"variant 必須是 {valid_variants} 中的一個")
-        return v
-    
+class TriangleParams(BaseModel):
+    """三角形參數模型"""
+    side_a: float = Field(default=3.0, gt=0, description="邊長 a")
+    side_b: float = Field(default=4.0, gt=0, description="邊長 b")
+    side_c: float = Field(default=5.0, gt=0, description="邊長 c")
+    show_centroid: bool = Field(default=False, description="顯示質心")
+
     @validator('side_c')
-    def validate_triangle_inequality(cls, v, values):
-        """驗證三角形不等式"""
+    def validate_triangle(cls, v, values):
         if 'side_a' in values and 'side_b' in values:
             a, b, c = values['side_a'], values['side_b'], v
             if not (a + b > c and a + c > b and b + c > a):
-                raise ValueError(f"邊長 ({a}, {b}, {c}) 不符合三角形不等式")
+                raise ValueError("邊長不符合三角形不等式")
         return v
 
-class MyFigureGenerator:
-    """我的新圖形生成器
-    
-    使用新架構的統一 API 生成三角形及其特殊點的 TikZ 圖形。
-    整合了幾何計算模組和 TikZ 渲染功能。
-    
-    此生成器展示如何：
-    1. 使用統一的幾何 API 進行數學計算
-    2. 使用 TikZ 模組進行圖形渲染
-    3. 整合配置管理和日誌系統
-    4. 支援多種變體和自定義選項
-    
-    Attributes:
-        name (str): 生成器唯一識別名稱
-        renderer (FigureRenderer): 圖形渲染器實例
-        
-    Example:
-        >>> generator = MyFigureGenerator()
-        >>> params = {'side_a': 3, 'side_b': 4, 'side_c': 5, 'variant': 'question'}
-        >>> tikz_code = generator.generate(params)
-        >>> print(tikz_code)
-    """
-    
-    def __init__(self):
-        """初始化生成器 (Phase 4 標準)
-        
-        使用新架構核心工具進行初始化，參考 Phase 4 最佳實踐。
-        """
-        self.name = "my_triangle_figure"
-        
-        # Phase 4: 新架構日誌系統
-        self.logger = get_logger(f"{__name__}.{self.__class__.__name__}")
-        self.logger.info(f"{self.name} 圖形生成器初始化完成")
-        
-        # Phase 4: 新架構配置系統整合
-        self.precision = global_config.get('geometry.precision', 6)
-        self.backend = global_config.get('geometry.backend', 'python')
-        
-        self.logger.debug(f"使用數學後端：{self.backend}，精度：{self.precision}")
-    
+@register_figure_generator
+class MyTriangleGenerator(FigureGenerator):
+    """進階三角形生成器 - 使用 Pydantic 驗證和新架構 API"""
+
     @classmethod
     def get_name(cls) -> str:
-        """獲取生成器唯一識別名稱
-        
-        Returns:
-            str: 生成器名稱，用於註冊系統
-        """
-        return "my_triangle_figure"
-    
-    def generate(self, params: Dict[str, Any]) -> str:
-        """生成 TikZ 圖形代碼
-        
-        使用新架構的統一 API 進行幾何計算和圖形渲染。
-        
-        Args:
-            params (Dict[str, Any]): 圖形參數字典
-                - side_a (float): 三角形邊長 a
-                - side_b (float): 三角形邊長 b
-                - side_c (float): 三角形邊長 c
-                - show_centroid (bool, optional): 是否顯示質心
-                - variant (str, optional): 變體類型
-                
-        Returns:
-            str: TikZ 圖形代碼（不含 tikzpicture 環境）
-            
-        Raises:
-            ValueError: 如果參數無效
-            GeometryError: 如果幾何計算失敗
-            
-        Example:
-            >>> generator = MyFigureGenerator()
-            >>> params = {'side_a': 3, 'side_b': 4, 'side_c': 5}
-            >>> tikz = generator.generate(params)
-            >>> '\\draw' in tikz
-            True
-        """
-        self.logger.debug(f"開始生成圖形，參數：{params}")
-        
-        # Phase 4: 使用 Pydantic 模型進行參數驗證
-        figure_params = MyFigureParams(**params)
-        
-        try:
-            # 使用統一幾何 API 構造三角形
-            triangle = construct_triangle(
-                "sss",
-                side_a=figure_params.side_a,
-                side_b=figure_params.side_b, 
-                side_c=figure_params.side_c
-            )
-            
-            # 生成基礎 TikZ 代碼
-            tikz_lines = []
-            tikz_lines.append("% 三角形圖形")
-            
-            # 繪製三角形
-            tikz_lines.append(
-                f"\\draw {triangle.A.to_tikz()} -- "
-                f"{triangle.B.to_tikz()} -- "
-                f"{triangle.C.to_tikz()} -- cycle;"
-            )
+        return "my_triangle"
 
-            # 標記頂點
-            tikz_lines.append(f"\\node[below left] at {triangle.A.to_tikz()} {{A}};")
-            tikz_lines.append(f"\\node[below right] at {triangle.B.to_tikz()} {{B}};")
-            tikz_lines.append(f"\\node[above] at {triangle.C.to_tikz()} {{C}};")
+    def generate_tikz(self, params: Dict[str, Any]) -> str:
+        # 使用 Pydantic 驗證參數
+        validated = TriangleParams(**params)
 
-            # 根據變體添加額外內容
-            if figure_params.variant == "explanation" or figure_params.show_centroid:
-                # 計算並顯示質心
-                centroid = get_centroid(triangle)
-                tikz_lines.append(
-                    f"\\fill[red] {centroid.to_tikz()} circle (2pt);"
-                )
-                tikz_lines.append(
-                    f"\\node[above right, red] at {centroid.to_tikz()} {{G}};"
-                )
-            
-            result = "\n".join(tikz_lines)
-            self.logger.info(f"圖形生成成功，代碼長度：{len(result)}")
-            return result
-            
-        except Exception as e:
-            self.logger.error(f"圖形生成失敗：{e}")
-            raise
-    
-    def get_supported_variants(self) -> List[str]:
-        """獲取支援的變體類型
-        
-        Returns:
-            List[str]: 支援的變體類型列表
-        """
-        return ["question", "explanation"]
-    
-    def get_parameter_info(self) -> Dict[str, Any]:
-        """獲取參數資訊
-        
-        提供參數的詳細說明，用於 UI 生成和文檔。
-        
-        Returns:
-            Dict[str, Any]: 參數資訊字典，包含類型、預設值、說明等
-        """
-        return {
-            "side_a": {
-                "type": "float",
-                "default": 3.0,
-                "min": 0.1,
-                "max": 100.0,
-                "description": "三角形邊長 a"
-            },
-            "side_b": {
-                "type": "float", 
-                "default": 4.0,
-                "min": 0.1,
-                "max": 100.0,
-                "description": "三角形邊長 b"
-            },
-            "side_c": {
-                "type": "float",
-                "default": 5.0,
-                "min": 0.1, 
-                "max": 100.0,
-                "description": "三角形邊長 c"
-            },
-            "show_centroid": {
-                "type": "bool",
-                "default": False,
-                "description": "是否顯示質心"
-            }
-        }
+        # 使用新架構 API 構造三角形
+        triangle = construct_triangle(
+            "sss",
+            side_a=validated.side_a,
+            side_b=validated.side_b,
+            side_c=validated.side_c
+        )
 
-# Phase 4: 圖形生成器使用不同的註冊系統
-# 圖形生成器使用 @register_figure_generator 裝飾器
-# (與 QuestionGenerator 的 @register_generator 不同)
+        # 生成 TikZ 代碼
+        tikz_parts = [
+            f"\\draw {triangle.A.to_tikz()} -- {triangle.B.to_tikz()} -- {triangle.C.to_tikz()} -- cycle;",
+            f"\\node[below] at {triangle.A.to_tikz()} {{A}};",
+            f"\\node[below] at {triangle.B.to_tikz()} {{B}};",
+            f"\\node[above] at {triangle.C.to_tikz()} {{C}};"
+        ]
 
-logger.debug(f"圖形生成器定義完成：{MyFigureGenerator.get_name()}")
+        # 選擇性添加質心
+        if validated.show_centroid:
+            centroid = get_centroid(triangle)
+            tikz_parts.extend([
+                f"\\fill[red] {centroid.to_tikz()} circle (2pt);",
+                f"\\node[above, red] at {centroid.to_tikz()} {{G}};"
+            ])
+
+        return "\n".join(tikz_parts)
+```
+
+### 🎩 **測試進階生成器**
+
+```python
+from figures import get_figure_generator
+gen = get_figure_generator('my_triangle')()
+print(gen.generate_tikz({
+    'side_a': 3, 'side_b': 4, 'side_c': 5,
+    'show_centroid': True
+}))
+```
+
+**完成！您現在已經掌握了使用 Pydantic 驗證和新架構 API 的進階技巧。**
 ```
 
 ### 3. Phase 4 圖形生成器註冊系統
@@ -764,52 +638,25 @@ if __name__ == "__main__":
 
 ---
 
-## 🚀 快速開始檢查清單
+## 🚀 **快速開始檢查清單**
 
-創建新生成器時，確保完成以下項目：
+### ✅ **基礎檢查清單** (必做)
+- [ ] 使用 `@register_figure_generator` 註冊
+- [ ] 實現 `get_name()` 和 `generate_tikz()` 方法
+- [ ] 測試基本功能正常
 
-- [ ] **完整 Sphinx Docstring** - 所有函數和類別
-- [ ] **統一 API 導入** - 使用 `from utils import ...`
-- [ ] **參數驗證** - 使用 dataclass 或自定義驗證
-- [ ] **日誌整合** - 使用 `get_logger(__name__)`
-- [ ] **註冊系統** - 使用 `registry.register_generator()`
-- [ ] **變體支援** - 實現 question/explanation 變體
-- [ ] **單元測試** - pytest 測試文件
-- [ ] **範例代碼** - docstring 中的使用範例
-- [ ] **錯誤處理** - 適當的異常類型和訊息
+### 🎆 **進階檢查清單** (可選)
+- [ ] 使用 Pydantic 參數驗證
+- [ ] 整合新架構 `utils` API
+- [ ] 編寫單元測試
 
-完成開發後執行：
+### 🎉 **完成開發後執行**：
 ```bash
-# 統一架構後驗證命令
+# 基礎驗證
+py -c "from figures import get_figure_generator; print('✅ 圖形系統正常')"
 
-# 1. 檢查統一架構參數模型導入
-py -c "from figures.params import PointParams, CircleParams, CoordinateSystemParams; print('✅ 統一架構參數模型正常')"
-
-# 2. 驗證圖形生成器系統
-py -c "from figures import get_figure_generator; gen = get_figure_generator('circle')(); print('✅ 圖形生成器系統正常')"
-
-# 3. 測試Point.to_tikz()方法
-py -c "from utils import Point; p = Point(1.5, 2.0); print(f'✅ Point.to_tikz(): {p.to_tikz()}')"
-
-# 4. 驗證核心生成器功能
-py -c "
-generators = ['point', 'line', 'circle', 'coordinate_system', 'angle', 'arc', 'label', 'basic_triangle', 'unit_circle', 'composite', 'standard_unit_circle']
-from figures import get_figure_generator
-success = 0
-for name in generators:
-    try:
-        gen = get_figure_generator(name)()
-        success += 1
-    except:
-        pass
-print(f'✅ 生成器成功率: {success}/{len(generators)} = {success/len(generators)*100:.1f}%')
-"
-
-# 5. 執行完整測試套件
-py -m pytest tests/test_utils/test_geometry/ -v
-
-# 6. 檢查架構統一後的整合狀態
-py -c "from utils import get_logger, global_config, Point; print('✅ 統一架構整合正常')"
+# (可選) 完整測試
+py -m pytest tests/test_utils/test_geometry/ -q
 ```
 
 ## 📋 **長期維護計劃**
