@@ -242,7 +242,7 @@ class ConfigUIFactory:
         """創建數字輸入控件
 
         Args:
-            config: 必須包含 default, min, max 數值參數
+            config: 必須包含 default 數值參數，min, max 為可選參數
 
         Returns:
             QSpinBox: 配置好範圍和預設值的數字輸入框
@@ -251,29 +251,35 @@ class ConfigUIFactory:
             ValueError: 配置參數缺失或格式錯誤
         """
         # 驗證必需參數
-        required_fields = ['default', 'min', 'max']
-        for field in required_fields:
-            if field not in config:
-                raise ValueError(f"number_input控件必須提供{field}參數")
+        if 'default' not in config:
+            raise ValueError("number_input控件必須提供default參數")
 
         default_value = config['default']
-        min_value = config['min']
-        max_value = config['max']
+        min_value = config.get('min')
+        max_value = config.get('max')
 
-        # 驗證數值類型和邏輯
-        for field, value in [('default', default_value), ('min', min_value), ('max', max_value)]:
-            if not isinstance(value, (int, float)):
-                raise ValueError(f"{field}參數必須為數值類型，收到: {type(value)}")
-
-        if min_value >= max_value:
-            raise ValueError(f"min({min_value})必須小於max({max_value})")
-
-        if not (min_value <= default_value <= max_value):
-            raise ValueError(f"default({default_value})必須在min({min_value})和max({max_value})之間")
+        # 驗證數值類型
+        if not isinstance(default_value, (int, float)):
+            raise ValueError(f"default參數必須為數值類型，收到: {type(default_value)}")
+        if min_value is not None and not isinstance(min_value, (int, float)):
+            raise ValueError(f"min參數必須為數值類型，收到: {type(min_value)}")
+        if max_value is not None and not isinstance(max_value, (int, float)):
+            raise ValueError(f"max參數必須為數值類型，收到: {type(max_value)}")
 
         # 創建 QSpinBox
         spinbox = QSpinBox()
-        spinbox.setRange(int(min_value), int(max_value))
+
+        # 僅在min和max都提供時，才設定範圍和驗證邏輯
+        if min_value is not None and max_value is not None:
+            if min_value >= max_value:
+                raise ValueError(f"min({min_value})必須小於max({max_value})")
+            if not (min_value <= default_value <= max_value):
+                raise ValueError(f"default({default_value})必須在min({min_value})和max({max_value})之間")
+            spinbox.setRange(int(min_value), int(max_value))
+        else:
+            # 如果沒有範圍，設定一個較大的默認範圍以允許自由輸入
+            spinbox.setRange(-999999, 999999)
+
         spinbox.setValue(int(default_value))
 
         # 參考 category_widget.py 的樣式設定

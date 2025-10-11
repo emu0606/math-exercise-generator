@@ -480,9 +480,9 @@ class TrigonometricFunctionGenerator(QuestionGenerator):
         # 題目格式化邏輯
         if display_as_radian:
             angle_rad = angle_deg * pi / 180
-            question = f"$\\{func.__name__}({latex(angle_rad)}) = $"
+            question = f"$\\{func.__name__}({latex(angle_rad)}) \\\\= $"
         else:
-            question = f"$\\{func.__name__}({angle_deg}^\\circ) = $"
+            question = f"$\\{func.__name__}({angle_deg}^\\circ) \\\\= $"
 
         # 答案處理邏輯
         if value == "ERROR":

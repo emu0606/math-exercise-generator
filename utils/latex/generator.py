@@ -71,9 +71,9 @@ class LaTeXGenerator:
             pages[page].append(item)
         
         # 生成 LaTeX 內容
-        content = self.latex_structure.get_preamble(test_title)
+        content = self.latex_structure.get_question_preamble(test_title)
         content += r"\begin{document}" + "\n"
-        
+
         # 生成每一頁
         for page in range(1, max_page + 1):
             if page > 1:
@@ -179,34 +179,228 @@ class LaTeXGenerator:
         content += r"\end{document}" + "\n"
         
         return content
-    
+
+    def _estimate_answer_display_width(self, answer: str) -> float:
+        """估算答案的 LaTeX 顯示寬度
+
+        根據 LaTeX 內容的複雜度估算其顯示寬度，用於選擇合適的卡片類型。
+
+        Args:
+            answer: LaTeX 格式的答案字串
+
+        Returns:
+            估算的顯示寬度（相對單位）
+
+        計算規則:
+            - 單字母變數: 寬度 1
+            - 分數 \\frac{}{}: 按分子分母長度計算
+            - 根號 \\sqrt{}: 內容長度 × 1.3
+            - 三角函數名 (sin, cos, tan等): 長度 × 0.8
+            - 上下標 (^, _): 內容長度 × 0.5
+            - 其他符號: 長度 1
+        """
+        import re
+
+        width = 0.0
+        i = 0
+        content = answer.strip()
+
+        while i < len(content):
+            # 處理 \frac{分子}{分母}
+            if content[i:i+5] == r'\frac':
+                # 尋找兩組大括號
+                brace_count = 0
+                numerator_start = i + 5
+                numerator_end = numerator_start
+
+                # 找分子結束位置
+                j = numerator_start
+                if j < len(content) and content[j] == '{':
+                    brace_count = 1
+                    j += 1
+                    while j < len(content) and brace_count > 0:
+                        if content[j] == '{':
+                            brace_count += 1
+                        elif content[j] == '}':
+                            brace_count -= 1
+                        j += 1
+                    numerator_end = j - 1
+
+                    # 找分母
+                    denominator_start = j
+                    denominator_end = denominator_start
+                    if j < len(content) and content[j] == '{':
+                        brace_count = 1
+                        j += 1
+                        while j < len(content) and brace_count > 0:
+                            if content[j] == '{':
+                                brace_count += 1
+                            elif content[j] == '}':
+                                brace_count -= 1
+                            j += 1
+                        denominator_end = j - 1
+
+                        # 計算分數寬度：取分子分母的最大寬度 + 1.5
+                        numerator = content[numerator_start+1:numerator_end]
+                        denominator = content[denominator_start+1:denominator_end]
+                        frac_width = max(
+                            self._estimate_answer_display_width(numerator),
+                            self._estimate_answer_display_width(denominator)
+                        ) + 1.5
+                        width += frac_width
+                        i = j
+                        continue
+
+            # 處理 \sqrt{內容}
+            elif content[i:i+5] == r'\sqrt':
+                # 尋找大括號內容
+                brace_count = 0
+                content_start = i + 5
+                content_end = content_start
+
+                j = content_start
+                if j < len(content) and content[j] == '{':
+                    brace_count = 1
+                    j += 1
+                    while j < len(content) and brace_count > 0:
+                        if content[j] == '{':
+                            brace_count += 1
+                        elif content[j] == '}':
+                            brace_count -= 1
+                        j += 1
+                    content_end = j - 1
+
+                    # 根號寬度 = 內容寬度 × 1.3
+                    inner_content = content[content_start+1:content_end]
+                    sqrt_width = self._estimate_answer_display_width(inner_content) * 1.3
+                    width += sqrt_width
+                    i = j
+                    continue
+
+            # 處理 LaTeX 命令（三角函數名和其他符號）
+            elif content[i] == '\\':
+                # 已知函數名：計算寬度
+                func_match = re.match(r'\\(sin|cos|tan|csc|sec|cot|arcsin|arccos|arctan|log|ln|exp)', content[i:])
+                if func_match:
+                    func_name = func_match.group(1)
+                    width += len(func_name) * 0.8
+                    i += len(func_match.group(0))
+                    continue
+                # 其他 LaTeX 命令（\pm, \circ, \times, \div 等）
+                else:
+                    cmd_match = re.match(r'\\[a-zA-Z]+', content[i:])
+                    if cmd_match:
+                        # 命令本身視為一個符號
+                        width += 1.5
+                        i += len(cmd_match.group(0))
+                        continue
+                    else:
+                        # 單個反斜線（如 \\）
+                        width += 1
+                        i += 1
+                        continue
+
+            # 處理上下標 ^ 和 _
+            elif content[i] in ('^', '_'):
+                # 尋找上下標內容
+                j = i + 1
+                if j < len(content):
+                    if content[j] == '{':
+                        brace_count = 1
+                        j += 1
+                        script_start = j
+                        while j < len(content) and brace_count > 0:
+                            if content[j] == '{':
+                                brace_count += 1
+                            elif content[j] == '}':
+                                brace_count -= 1
+                            j += 1
+                        script_content = content[script_start:j-1]
+                        width += self._estimate_answer_display_width(script_content) * 0.5
+                        i = j
+                        continue
+                    else:
+                        # 單字符上下標
+                        width += 0.5
+                        i = j + 1
+                        continue
+
+            # 跳過 $ 符號和空格
+            elif content[i] in ('$', ' ', '\n', '\t'):
+                i += 1
+                continue
+
+            # 處理普通字符（字母、數字、符號）
+            else:
+                width += 1
+                i += 1
+
+        return width
+
+    def _get_answer_card_type(self, answer: str) -> str:
+        """根據答案寬度選擇卡片類型
+
+        根據估算的答案顯示寬度，選擇四種卡片類型之一。
+
+        Args:
+            answer: LaTeX 格式的答案字串
+
+        Returns:
+            卡片類型命令名稱: 'tinyCard', 'shortCard', 'mediumCard', 或 'longCard'
+
+        分類規則（初始閾值，可在 Phase 5 微調）:
+            - 寬度 < 10: tinyCard (四欄, 0.23\\textwidth)
+            - 寬度 10-18: shortCard (三欄, 0.305\\textwidth)
+            - 寬度 18-30: mediumCard (兩欄, 0.47\\textwidth)
+            - 寬度 > 30: longCard (單欄, 0.98\\textwidth)
+        """
+        width = self._estimate_answer_display_width(answer)
+
+        if width < 10:
+            return 'tinyCard'
+        elif width < 18:
+            return 'shortCard'
+        elif width < 30:
+            return 'mediumCard'
+        else:
+            return 'longCard'
+
     def generate_answer_tex(self, layout_results: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
-        """生成簡答頁 LaTeX 內容
+        """生成簡答頁 LaTeX 內容（動態卡片佈局版本）
+
+        使用智能寬度計算和四種卡片類型，實現動態佈局和色彩輪換。
 
         Args:
             layout_results: 佈局結果列表
             test_title: 測驗標題
             questions_per_round: 每回題數
-            
+
         Returns:
             簡答頁 LaTeX 內容
         """
+        # 卡片寬度定義（含間距）
+        CARD_WIDTHS = {
+            'tinyCard': 0.245,    # 0.23 + 0.015
+            'shortCard': 0.320,   # 0.305 + 0.015
+            'mediumCard': 0.485,  # 0.47 + 0.015
+            'longCard': 0.995     # 0.98 + 0.015
+        }
+
         # 生成 LaTeX 內容
-        content = self.latex_structure.get_preamble(test_title)
+        content = self.latex_structure.get_answer_preamble(test_title)
         content += r"\begin{document}" + "\n"
-        
+
         # 標題
         content += r"\begin{center}" + "\n"
         content += r"{\Large \textbf{" + test_title + r" - 簡答}}" + "\n"
         content += r"\end{center}" + "\n\n"
-        
+
         # 生成日期
         content += r"\noindent 生成日期：" + self.current_date + r"\hfill" + "\n\n"
-        
+
         # 簡答列表，分回展示
         current_round = -1
-        items_in_current_row = 0 # 修改變數名以反映其用途
-        items_per_row = 3 # 每行顯示的項目數
+        current_line_width = 0.0  # 當前行已使用的寬度
 
         for i, question in enumerate(layout_results):
             # 計算回數和回內題號
@@ -216,48 +410,59 @@ class LaTeXGenerator:
             else:
                 round_num = 1
                 question_num_in_round = i + 1
-            
-            # 如果換到新的一回，新增回標題和分隔線
-            if round_num != current_round:
-                # 如果不是第一回，且上一回有內容，則結束上一回的最後一行（如果需要）
-                if current_round != -1 and items_in_current_row > 0:
-                    content += r"\end{answerRow}" + "\n\n"
-                    items_in_current_row = 0 # 重置行計數器
 
-                # 若不是第一回，添加垂直間距（取代分隔線）
-                if current_round != -1 and round_num > 1:
-                    content += r"\vspace{1.5em}" + "\n\n" # 回次之間的間距
+            # 如果換到新的一回，新增回標題和分隔
+            if round_num != current_round:
+                # 若不是第一回，添加回次間距
+                if current_round != -1:
+                    # 強制換行（如果當前行有內容）
+                    if current_line_width > 0:
+                        content += "\n\n"
+                        current_line_width = 0.0
+
+                    content += r"\vspace{1.5em}" + "\n\n"
 
                 # 開始新的一回
                 content += f"\\roundtitle{{第{round_num}回}}\n\n"
                 current_round = round_num
-                items_in_current_row = 0 # 新回次，重置行計數器
+                current_line_width = 0.0  # 新回次，重置行寬度
 
-            # 開始新的一行（如果需要）
-            if items_in_current_row == 0:
-                content += r"\begin{answerRow}" + "\n"
-
-            # 獲取答案
+            # 獲取答案並計算卡片類型
             answer = question.get('answer', '')
+            formatted_answer = self.latex_structure.format_latex_content(answer)
+            card_type = self._get_answer_card_type(answer)
+            card_width = CARD_WIDTHS[card_type]
 
-            # 添加 numberedAnswerLine
-            content += f"  \\numberedAnswerLine{{{question_num_in_round}}}{{{self.latex_structure.format_latex_content(answer)}}}\n"
-            items_in_current_row += 1
+            # 判斷是否需要換行
+            if current_line_width > 0 and (current_line_width + card_width) > 1.0:
+                content += "\n\n"  # 強制換行
+                current_line_width = 0.0
 
-            # 結束當前行（如果已滿）
-            if items_in_current_row == items_per_row:
-                content += r"\end{answerRow}" + "\n"
-                items_in_current_row = 0
+            # 色彩輪換：每5題的第一題設置色系
+            if (question_num_in_round - 1) % 5 == 0:
+                color_scheme = ((question_num_in_round - 1) // 5) % 4 + 1
+                content += f"\\setColorScheme{{{color_scheme}}}\n"
 
-        # 結束最後一個回次的最後一行（如果未滿）
-        if current_round != -1 and items_in_current_row > 0:
-            content += r"\end{answerRow}" + "\n"
-        
+            # 輸出卡片
+            content += f"\\{card_type}{{{question_num_in_round}}}{{{formatted_answer}}}\n"
+
+            # 更新當前行寬度
+            current_line_width += card_width
+
+            # 如果是 longCard，強制換行
+            if card_type == 'longCard':
+                content += "\n"
+                current_line_width = 0.0
+
+        # 最後確保有換行（如果當前行有內容）
+        if current_line_width > 0:
+            content += "\n"
+
         # 頁尾
         content += self.latex_structure.generate_page_footer()
-        
+
         content += r"\end{document}" + "\n"
-        
+
         return content
     
     def generate_explanation_tex(self, layout_results: List[Dict[str, Any]], test_title: str, questions_per_round: int = 0) -> str:
@@ -272,9 +477,9 @@ class LaTeXGenerator:
             詳解頁 LaTeX 內容
         """
         # 生成 LaTeX 內容
-        content = self.latex_structure.get_preamble(test_title)
+        content = self.latex_structure.get_explanation_preamble(test_title)
         content += r"\begin{document}" + "\n"
-        
+
         # 標題
         content += r"\begin{center}" + "\n"
         content += r"{\Large \textbf{" + test_title + r" - 詳解}}" + "\n"
@@ -363,18 +568,7 @@ class LaTeXGenerator:
         return content
     
     # 以下方法保留為向後兼容的適配方法
-    
-    def _get_preamble(self, title: str) -> str:
-        """獲取 LaTeX 文檔的前導區（向後兼容的適配方法）
-        
-        Args:
-            title: 文檔標題
-            
-        Returns:
-            LaTeX 前導區內容
-        """
-        return self.latex_structure.get_preamble(title)
-    
+
     def _generate_page_header(self, round_num: int) -> str:
         """生成頁首（向後兼容的適配方法）
         

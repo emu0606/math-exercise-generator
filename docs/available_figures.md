@@ -496,7 +496,74 @@
 }
 ```
 
-### 2. 預定義三角形 (`predefined_triangle`)
+### 2. 數線 (`number_line`)
+
+生成水平數線及其刻度和標籤，用於對數內插法等數學概念的視覺化展示。數線由水平線段、三個刻度點（左端、中間、右端）和對應的上下雙層標籤組成。
+
+**參數**：
+```python
+{
+    'lower_value': 2.0,      # 左端點數值（用於計算中間點位置比例）
+    'upper_value': 3.0,      # 右端點數值
+    'middle_value': 2.5,     # 中間點數值
+    'lower_label': '0.3010', # 左端點上方標籤（如對數值）
+    'upper_label': '0.4771', # 右端點上方標籤
+    'middle_label': '?',     # 中間點上方標籤
+    'lower_bottom': '2',     # 左端點下方標籤（如真數）
+    'upper_bottom': '3',     # 右端點下方標籤
+    'middle_bottom': '2.5',  # 中間點下方標籤
+    'line_length': 6.0,      # 數線總長度（TikZ 單位，預設 6.0）
+    'tick_height': 0.2       # 刻度線高度（預設 0.2）
+}
+```
+
+**特點**：
+- **線性比例定位**: 中間點位置根據 `(middle_value - lower_value) / (upper_value - lower_value)` 自動計算
+- **雙層標註**: 上方標籤用於顯示對數值，下方標籤用於顯示真數
+- **自動偏移**: 當中間點靠近端點時（比例 < 0.25 或 > 0.75），標籤自動向外偏移避免重疊
+- **輕量設計**: 不依賴複雜參數模型，直接接受字典參數
+
+**示例 1 - 正向內插法（已知真數求對數）**：
+```python
+'figure_data_question': {
+    'type': 'number_line',
+    'params': {
+        'lower_value': 2,
+        'upper_value': 3,
+        'middle_value': 2.5,
+        'lower_label': '0.3010',     # log(2)
+        'upper_label': '0.4771',     # log(3)
+        'middle_label': '?',         # 待求的 log(2.5)
+        'lower_bottom': '2',
+        'upper_bottom': '3',
+        'middle_bottom': '2.5',      # 已知真數
+        'line_length': 6.0
+    },
+    'options': {'scale': 1.0}
+}
+```
+
+**示例 2 - 反向內插法（已知對數求真數）**：
+```python
+'figure_data_question': {
+    'type': 'number_line',
+    'params': {
+        'lower_value': 2,
+        'upper_value': 3,
+        'middle_value': 2.45,        # 內部計算用
+        'lower_label': '0.3010',
+        'upper_label': '0.4771',
+        'middle_label': '0.39',      # 已知對數值
+        'lower_bottom': '2',
+        'upper_bottom': '3',
+        'middle_bottom': '?',        # 待求的真數
+        'line_length': 6.0
+    },
+    'options': {'scale': 1.0}
+}
+```
+
+### 3. 預定義三角形 (`predefined_triangle`)
 
 根據詳細配置繪製三角形，包括其幾何定義、頂點、邊、角和特殊點的標記與樣式。這是一個高度可配置的生成器，用於創建各種帶標註的三角形圖形。
 
