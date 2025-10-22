@@ -56,9 +56,11 @@ class LaTeXStructure:
 \usepackage{lmodern}
 \usepackage{titlesec}
 
-% 題目頁專屬：TikZ 完整庫
+% 題目頁專屬：TikZ 完整庫 + PGFPlots
 \usepackage{tikz}
 \usetikzlibrary{positioning, shadows, calc, arrows.meta, angles, quotes}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}  % 啟用 PGFPlots 最新特性
 
 % 字體設定
 \setCJKmainfont[
@@ -148,9 +150,11 @@ class LaTeXStructure:
 \usepackage{lmodern}
 \usepackage{titlesec}
 
-% 簡答頁專屬：基本 TikZ + tcolorbox
+% 簡答頁專屬：基本 TikZ + tcolorbox + PGFPlots
 \usepackage{tikz}
 \usepackage[most]{tcolorbox}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}  % 啟用 PGFPlots 最新特性
 
 % 字體設定
 \setCJKmainfont[
@@ -362,6 +366,8 @@ class LaTeXStructure:
 \usetikzlibrary{positioning, calc, arrows.meta}
 \usepackage[most]{tcolorbox}
 \usepackage{multicol}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}  % 啟用 PGFPlots 最新特性
 
 % 字體設定
 \setCJKmainfont[

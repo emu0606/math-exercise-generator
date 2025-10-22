@@ -136,6 +136,8 @@ class QuestionGenerator:
                         'explanation': question_result.get('explanation', ''),
                         'figure_data_question': question_result.get('figure_data_question'),
                         'figure_data_explanation': question_result.get('figure_data_explanation'),
+                        'figure_position': question_result.get('figure_position', 'right'),
+                        'explanation_figure_position': question_result.get('explanation_figure_position', 'right'),
                         'size': question_result.get('size', 1),
                         'difficulty': question_result.get('difficulty', 'MEDIUM')
                     }

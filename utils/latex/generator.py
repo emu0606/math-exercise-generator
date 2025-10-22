@@ -10,6 +10,10 @@ from typing import Dict, List, Any, Optional
 from .config import LaTeXConfig
 from .structure import LaTeXStructure
 from ..rendering.figure_renderer import FigureRenderer
+from ..core.logging import get_logger
+
+# 模組級別的 logger
+logger = get_logger(__name__)
 
 class LaTeXGenerator:
     """LaTeX 生成器
@@ -130,23 +134,33 @@ class LaTeXGenerator:
                     formatted_question = self.latex_structure.format_latex_content(question_text)
                     question_body = formatted_question # 移除題號，只留題目文字
 
-                    # 根據寬度調整文字/圖形比例
-                    if width_cells == 1: # Small 或 Square
-                        text_width_ratio = 0.6
-                        figure_width_ratio = 0.4
-                    else: # Wide, Medium, Large, Extra
-                        text_width_ratio = 0.6
-                        figure_width_ratio = 0.35
-                        
-                    text_w = round(text_width_ratio * w, 3)
-                    figure_w = round(figure_width_ratio * w, 3)
-                    content_width = round(w - 2 * 0.1, 3) # 無圖形時內容寬度 (假設 text_x_offset=0.1)
+                    # 寬度計算常數（用於防止內容超出格子邊界）
+                    INNER_SEP_VALUE = 0.2  # cm，TikZ node 的 inner sep 值
+                    SAFETY_MARGIN = 0.1    # cm，安全餘量，防止貼邊
+                    TEXT_FIGURE_GAP = 0.2  # cm，文字和圖形之間的間距
 
-                    # 計算調整後的位置/寬度
-                    node_inner_sep = "0.2cm" # 節點內邊距
+                    # 位置偏移設定
+                    node_inner_sep = "0.2cm" # 節點內邊距（字串形式，用於 LaTeX）
                     text_x_offset = 0.1 # 距離左邊緣的小水平偏移
                     text_y_offset = -0.5 # 距離頂部邊緣的垂直偏移（在題號下方）
                     figure_y_offset = -0.1 # 圖形的垂直偏移（頂部略低於框頂）
+
+                    # 根據寬度調整文字/圖形比例
+                    if width_cells == 1: # Small 或 Square
+                        text_width_ratio = 0.60
+                        figure_width_ratio = 0.40
+                    else: # Wide, Medium, Large, Extra
+                        text_width_ratio = 0.65
+                        figure_width_ratio = 0.35
+
+                    # 修正後的寬度計算
+                    # 無圖形時：扣除左偏移、左右 inner sep、安全餘量
+                    content_width = round(w - text_x_offset - 2 * INNER_SEP_VALUE - SAFETY_MARGIN, 3)
+
+                    # 有圖形時：先計算可用寬度，再按比例分配
+                    available_width = w - text_x_offset - 2 * INNER_SEP_VALUE - TEXT_FIGURE_GAP
+                    text_w = round(text_width_ratio * available_width, 3)
+                    figure_w = round(figure_width_ratio * available_width, 3)
 
                     if figure_content and figure_position != 'none':
                         # *** 修改：強制使用 resizebox 包裹圖形 ***
@@ -332,7 +346,12 @@ class LaTeXGenerator:
 
             # 處理普通字符（字母、數字、符號）
             else:
-                width += 1
+                # 判斷是否為中文字符（CJK統一表意文字）
+                # Unicode 範圍: U+4E00 到 U+9FFF（基本漢字）
+                if '一' <= content[i] <= '鿿':
+                    width += 2  # 中文字占 2 個單位寬度
+                else:
+                    width += 1  # 英文、數字、符號占 1 個單位寬度
                 i += 1
 
         return width
@@ -527,7 +546,7 @@ class LaTeXGenerator:
             # *** 修正：使用單個 tcolorbox，內部處理佈局 (Plan C.1) ***
             explanation_figure_position = question.get('explanation_figure_position', 'right') # 預設 'right'
             explanation_text_only = f"\\textbf{{{question_num_in_round}.}} {formatted_explanation}"
-            
+
             inner_content = "" # 用於構建 tcolorbox 的內部內容
             if figure_content:
                 if explanation_figure_position == 'right':
@@ -539,8 +558,8 @@ class LaTeXGenerator:
                     inner_content = f"{left_mp}\\hfill{right_mp}"
                     
                 elif explanation_figure_position == 'bottom':
-                    # 圖片置下：在 tcolorbox 內部上下排列
-                    bottom_figure = f"\\resizebox{{\\linewidth}}{{!}}{{{figure_content}}}" # \linewidth = tcolorbox width
+                    # 圖片置下：在 tcolorbox 內部上下排列，使用 0.9 寬度留出左右邊白
+                    bottom_figure = f"\\resizebox{{0.9\\linewidth}}{{!}}{{{figure_content}}}"
                     inner_content = f"{explanation_text_only}\n\\par\\medskip\\centering\n{bottom_figure}"
                     
                 else: # 無法識別的位置或 'none'，視為只有文字

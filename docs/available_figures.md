@@ -2,6 +2,59 @@
 
 本文檔列出了數學測驗生成器中所有可用的圖形類型，包括基礎圖形和預定義複合圖形。
 
+---
+
+## 📑 快速導航
+
+### 基礎概念
+- [圖形排版位置](#圖形排版位置)
+- [渲染選項](#渲染選項)
+- [使用示例](#使用示例)
+- [擴展說明](#擴展)
+
+### 基礎圖形類型
+- [1. 單位圓 (unit_circle)](#1-單位圓-unit_circle)
+- [2. 圓形 (circle)](#2-圓形-circle)
+- [3. 坐標系 (coordinate_system)](#3-坐標系-coordinate_system)
+- [4. 點 (point)](#4-點-point)
+- [5. 線段 (line)](#5-線段-line)
+- [6. 角度 (angle)](#6-角度-angle)
+- [7. 標籤 (label)](#7-標籤-label)
+- [8. 基礎三角形 (basic_triangle)](#8-基礎三角形-basic_triangle)
+- [9. 圓弧 (arc)](#9-圓弧-arc)
+- [10. 函數圖形 (function_plot)](#10-函數圖形-function_plot)
+
+### 複合圖形類型
+- [1. 複合圖形 (composite)](#1-複合圖形-composite)
+
+### 預定義複合圖形類型
+- [1. 標準單位圓 (standard_unit_circle)](#1-標準單位圓-standard_unit_circle)
+- [2. 數線 (number_line)](#2-數線-number_line)
+- [3. 預定義三角形 (predefined_triangle)](#3-預定義三角形-predefined_triangle)
+
+---
+
+## 📊 圖形類型快速參考
+
+| 分類 | 圖形類型 | `type` 參數值 | 主要用途 | 詳細說明 |
+|------|---------|--------------|---------|---------|
+| **基礎** | 單位圓 | `unit_circle` | 三角函數基礎圖形 | [跳轉](#1-單位圓-unit_circle) |
+| **基礎** | 圓形 | `circle` | 一般圓形繪製 | [跳轉](#2-圓形-circle) |
+| **基礎** | 坐標系 | `coordinate_system` | 座標平面 | [跳轉](#3-坐標系-coordinate_system) |
+| **基礎** | 點 | `point` | 標記座標點 | [跳轉](#4-點-point) |
+| **基礎** | 線段 | `line` | 直線、射線、線段 | [跳轉](#5-線段-line) |
+| **基礎** | 角度 | `angle` | 角度標記弧線 | [跳轉](#6-角度-angle) |
+| **基礎** | 標籤 | `label` | 文字標註 | [跳轉](#7-標籤-label) |
+| **基礎** | 基礎三角形 | `basic_triangle` | 簡單三角形 | [跳轉](#8-基礎三角形-basic_triangle) |
+| **基礎** | 圓弧 | `arc` | 圓弧線段 | [跳轉](#9-圓弧-arc) |
+| **基礎** | 函數圖形 | `function_plot` | 繪製數學函數曲線 | [跳轉](#10-函數圖形-function_plot) |
+| **複合** | 複合圖形 | `composite` | 組合多個基礎圖形 | [跳轉](#1-複合圖形-composite) |
+| **預定義** | 標準單位圓 | `standard_unit_circle` | 完整配置的單位圓 | [跳轉](#1-標準單位圓-standard_unit_circle) |
+| **預定義** | 數線 | `number_line` | 對數內插法視覺化 | [跳轉](#2-數線-number_line) |
+| **預定義** | 預定義三角形 | `predefined_triangle` | 高度可配置的三角形 | [跳轉](#3-預定義三角形-predefined_triangle) |
+
+---
+
 ## 圖形排版位置
 
 生成器可以通過重寫以下方法控制圖形在 PDF 中的排版位置：
@@ -12,7 +65,7 @@
 - **`"bottom"`**: 圖在文字下方，使用全寬
 - **`"none"`**: 無圖形，文字使用全寬
 
-### 解釋圖形位置 (`get_explanation_figure_position()`)
+### 詳解圖形位置 (`get_explanation_figure_position()`)
 - **`"right"`** (預設): 圖在右側 (38% 寬)，文字在左側 (58% 寬)
 - **`"bottom"`**: 圖在文字下方，使用全寬
 - **`"none"`**: 無圖形，文字使用全寬
@@ -355,6 +408,137 @@
     'options': {'scale': 1.0}
 }
 ```
+
+### 10. 函數圖形 (`function_plot`)
+
+萬用函數圖形生成器，支援多項式、指數、對數、三角函數等常見高中數學函數。使用 PGFPlots 繪製高品質圖形，自動處理 tan 函數不連續點。
+
+**✨ 新增功能（2025-10-20）**：
+- 🎨 **多曲線支援**：在同一圖形中繪製多條不同顏色/樣式的曲線段
+- 📍 **點和標籤標註**：直接在圖形上添加點標記和文字標籤
+- 🎛️ **靈活座標軸控制**：可完全隱藏座標軸、刻度、網格
+- 📏 **可配置尺寸**：自定義圖形寬度和高度
+- 🎯 **精確繪圖範圍**：主曲線和額外曲線可分別指定繪製區間
+
+**支援的函數類型**：
+- **polynomial**: 多項式函數（如 x² - 2x + 1）
+- **exponential**: 指數函數（如 2ˣ, eˣ）
+- **logarithmic**: 對數函數（如 log₂(x), ln(x)）
+- **trigonometric**: 三角函數（如 sin(x), cos(x), tan(x)）
+
+**基礎參數** (`FunctionPlotParams`):
+```python
+{
+    'function_type': 'polynomial',  # 'polynomial', 'exponential', 'logarithmic', 'trigonometric'
+
+    # 多項式專用（降冪排列）
+    'coefficients': [1, -2, 1],     # x^2 - 2x + 1，polynomial 類型必需
+
+    # 指數/對數專用
+    'base': 2.0,                    # 底數，None 表示自然底數 e
+
+    # 三角函數專用
+    'trig_function': 'sin',         # 'sin', 'cos', 'tan'，trigonometric 類型必需
+    'amplitude': 1.0,               # 振幅（可選）
+    'period': 6.283185,             # 週期 2π（可選）
+
+    # 座標系統範圍（定義可視區域）
+    'x_range': (-5, 5),             # x 軸顯示範圍
+    'y_range': (-5, 5),             # y 軸顯示範圍
+
+    # 🆕 圖形尺寸（NEW）
+    'figure_width': '10cm',         # 圖形寬度（LaTeX 單位，可用 '0.8\\textwidth'）
+    'figure_height': '7cm',         # 圖形高度
+
+    # 🆕 座標軸控制（NEW）
+    'axis_lines_style': 'middle',   # 'none', 'middle', 'box', 'left', 'right', 'center'
+    'show_ticks': True,             # 是否顯示刻度標記
+    'show_grid': True,              # 是否顯示網格
+    'show_axes_labels': True,       # 是否顯示座標軸標籤
+
+    # 繪圖選項
+    'samples': 100,                 # 採樣點數量（20-500）
+    'plot_color': 'blue',           # 主曲線顏色
+    'line_thickness': 'thick',      # 主曲線線條粗細
+    'show_y_intercept': False,      # 是否標記 y 截距點（可選）
+    'y_intercept_color': 'red',     # y 截距標記顏色
+
+    # 🆕 主曲線繪製範圍（NEW）
+    'main_plot_domain': None,       # (x_min, x_max)，None 則使用完整 x_range
+
+    # 🆕 多曲線支援（NEW）
+    'additional_plots': [           # 額外曲線列表
+        {
+            'domain': (-1, 2),      # 繪製範圍（必需）
+            'color': 'red',         # 顏色（預設 'blue'）
+            'thickness': 'very thick',  # 線條粗細（預設 'thick'）
+            'samples': 100,         # 採樣點數（預設使用主曲線的 samples）
+            'expression': None      # TikZ 表達式（可選，預設使用主函數）
+        }
+        # 可添加更多曲線...
+    ],
+
+    # 🆕 點標註（NEW）
+    'plot_points': [                # 標記點列表
+        {
+            'x': 0, 'y': 0,         # 座標（必需）
+            'color': 'red',         # 顏色（預設 'black'）
+            'size': '3pt'           # 點大小（預設 '3pt'）
+        }
+        # 可添加更多點...
+    ],
+
+    # 🆕 標籤標註（NEW）
+    'plot_labels': [                # 標籤列表
+        {
+            'x': 0, 'y': 0,         # 位置（必需）
+            'text': 'Origin',       # 標籤文字（必需）
+            'position': 'above',    # 'above', 'below', 'left', 'right'（預設 'above'）
+            'color': 'black',       # 顏色（預設 'black'）
+            'math_mode': True       # 是否使用數學模式 $...$ （預設 True）
+        }
+        # 可添加更多標籤...
+    ]
+}
+```
+
+**示例 1 - 多項式函數**：
+```python
+'figure_data_question': {
+    'type': 'function_plot',
+    'params': {
+        'function_type': 'polynomial',
+        'coefficients': [1, -2, 1],  # x^2 - 2x + 1
+        'x_range': (-1, 4),
+        'y_range': (-1, 5),
+        'show_y_intercept': True
+    }
+}
+```
+
+**示例 2 - 三角函數（自動處理 tan 不連續）**：
+```python
+'figure_data_question': {
+    'type': 'function_plot',
+    'params': {
+        'function_type': 'trigonometric',
+        'trig_function': 'tan',
+        'x_range': (-4.71, 4.71),  # -3π/2 到 3π/2
+        'y_range': (-4, 4),
+        'samples': 200  # tan 建議更多採樣點
+    }
+}
+```
+
+**特點**：
+- 使用 PGFPlots 繪製，自動處理邊界條件
+- 三角函數使用弧度模式（trig format=rad）
+- tan 函數自動添加 `unbounded coords=jump` 處理漸近線
+- y 截距標記含安全檢查（超出範圍不顯示）
+- 對數函數定義域應從 0.001 開始避免無效值
+
+**詳細參數說明**：`figures/params/function_plot.py`
+**使用範例**：`tests/test_function_plot_integration.py`
 
 ## 複合圖形類型
 

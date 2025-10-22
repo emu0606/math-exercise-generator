@@ -256,6 +256,7 @@ from .label import LabelGenerator
 # from .triangle import TriangleGenerator # 舊的或待重構的
 from .basic_triangle import BasicTriangleGenerator # 新增的基礎三角形
 from .arc import ArcGenerator # 新增的圓弧生成器
+from .function_plot import FunctionPlotGenerator # 函數圖形生成器
 
 # 複合圖形生成器
 from .composite import CompositeFigureGenerator

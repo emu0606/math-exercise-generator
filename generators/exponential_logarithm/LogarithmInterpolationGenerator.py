@@ -107,6 +107,7 @@ class LogarithmInterpolationGenerator(QuestionGenerator):
         # 配置讀取
         options = options or {}
         self.question_type = options.get('question_type', 'mixed')
+        self.show_log_values = options.get('show_log_values', True)
 
         # 預建可逆配對表
         self._build_valid_pairs()
@@ -269,14 +270,24 @@ class LogarithmInterpolationGenerator(QuestionGenerator):
             Dict[str, Any]: 圖形資料，包含 type, params, options
         """
         # 上方標籤（對數值）
-        if is_forward:
-            top_left = f"{log_lower:.4f}"
-            top_middle = "?" if use_question_mark else f"{log_x}"
-            top_right = f"{log_upper:.4f}"
-        else:
+        # 詳解階段必定全顯示，題目階段考慮配置
+        if not use_question_mark:
+            # 詳解圖形：完整顯示所有對數值
             top_left = f"{log_lower:.4f}"
             top_middle = f"{log_x}"
             top_right = f"{log_upper:.4f}"
+        else:
+            # 題目圖形：端點受配置控制，中間值視題型決定
+            if is_forward:
+                # 正向題型（求對數）：中間顯示問號
+                top_left = f"{log_lower:.4f}" if self.show_log_values else ""
+                top_middle = "?"  # 問題本身，必須顯示
+                top_right = f"{log_upper:.4f}" if self.show_log_values else ""
+            else:
+                # 反向題型（求真數）：中間顯示已知對數值
+                top_left = f"{log_lower:.4f}" if self.show_log_values else ""
+                top_middle = f"{log_x}"  # 題目條件，必須顯示
+                top_right = f"{log_upper:.4f}" if self.show_log_values else ""
 
         # 下方標籤（真數）
         if is_forward:
@@ -300,11 +311,11 @@ class LogarithmInterpolationGenerator(QuestionGenerator):
                 'lower_bottom': bottom_left,
                 'upper_bottom': bottom_right,
                 'middle_bottom': bottom_middle,
-                'line_length': 6.0,
-                'tick_height': 0.2
+                'line_length': 4.0,
+                'tick_height': 0.15
             },
             'options': {
-                'scale': 0.9
+                'scale': 1.0
             }
         }
 
@@ -473,5 +484,11 @@ class LogarithmInterpolationGenerator(QuestionGenerator):
                 "default": "mixed",
                 "options": ["求對數", "求真數", "mixed"],
                 "description": "求對數:給真數求對數\n求真數: 給對數求真數\nmixed: 混合模式"
+            },
+            "show_log_values": {
+                "type": "checkbox",
+                "label": "顯示端點對數值",
+                "default": True,
+                "description": "數線上方是否顯示兩端對數值\n關閉可增加題目挑戰性"
             }
         }
