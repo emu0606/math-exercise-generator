@@ -723,10 +723,19 @@ class QuadraticExtremumGenerator(QuestionGenerator):
             )
         else:
             # 頂點在區間外
-            closer_x = self._get_closer_endpoint(x1, x2, h)
-            farther_x = self._get_farther_endpoint(x1, x2, h)
-            calc_closer = self._format_calculation(a, b, c, closer_x)
-            calc_farther = self._format_calculation(a, b, c, farther_x)
+            # 計算兩端點的函數值
+            y1 = a * x1 * x1 + b * x1 + c
+            y2 = a * x2 * x2 + b * x2 + c
+
+            # 使用傳入的 y_max 參數判斷哪個端點是最大值
+            if y1 > y2:
+                # x1 端點較大
+                calc_max = self._format_calculation(a, b, c, x1)
+                calc_min = self._format_calculation(a, b, c, x2)
+            else:
+                # x2 端點較大（或相等時視為 x2）
+                calc_max = self._format_calculation(a, b, c, x2)
+                calc_min = self._format_calculation(a, b, c, x1)
 
             # 判斷頂點在左方或右方
             if h < x1:
@@ -738,15 +747,14 @@ class QuadraticExtremumGenerator(QuestionGenerator):
                 boundary = x2
                 side = '右'
 
-            # 判斷單調性和極值分配
+            # 判斷單調性（用於說明文字）
             if (a > 0 and h < x1) or (a < 0 and h > x2):
                 monotonicity = '遞增'
-                # 遞增：closer端點為最小值，farther端點為最大值
-                extremum_assignment = f"最小值為\n{calc_closer}\n\n最大值為\n{calc_farther}"
             else:
                 monotonicity = '遞減'
-                # 遞減：closer端點為最大值，farther端點為最小值
-                extremum_assignment = f"最大值為\n{calc_closer}\n\n最小值為\n{calc_farther}"
+
+            # 使用正確分配的計算式
+            extremum_assignment = f"最小值為\n{calc_min}\n\n最大值為\n{calc_max}"
 
             return EXPLANATION_TEMPLATE_INTERVAL_OUTSIDE.format(
                 function=function_expr.replace('y = ', ''),

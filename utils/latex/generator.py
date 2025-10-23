@@ -122,7 +122,7 @@ class LaTeXGenerator:
                     figure_content = ""
                     if figure_data_question:
                         figure_content = self.figure_renderer.render(figure_data_question)
-                    
+
                     # 繪製圓角矩形和題目內容
                     content += f"  % 題目 {question_num}\n"
                     content += f"  \\draw[rounded corners=3pt, thick] ({x}, {y}) rectangle ({x+w}, {y-h});\n"
@@ -133,6 +133,11 @@ class LaTeXGenerator:
                     figure_position = item.get('figure_position', 'right')
                     formatted_question = self.latex_structure.format_latex_content(question_text)
                     question_body = formatted_question # 移除題號，只留題目文字
+
+                    # 讀取 layout_question 參數（如果存在）
+                    layout_question = None
+                    if figure_data_question and isinstance(figure_data_question, dict):
+                        layout_question = figure_data_question.get('layout_question')
 
                     # 寬度計算常數（用於防止內容超出格子邊界）
                     INNER_SEP_VALUE = 0.2  # cm，TikZ node 的 inner sep 值
@@ -146,7 +151,12 @@ class LaTeXGenerator:
                     figure_y_offset = -0.1 # 圖形的垂直偏移（頂部略低於框頂）
 
                     # 根據寬度調整文字/圖形比例
-                    if width_cells == 1: # Small 或 Square
+                    # 優先使用 layout_question 的自訂比例，否則使用預設比例
+                    if layout_question and 'width_ratio' in layout_question:
+                        # 使用自訂圖形寬度比例
+                        figure_width_ratio = layout_question['width_ratio']
+                        text_width_ratio = 1.0 - figure_width_ratio
+                    elif width_cells == 1: # Small 或 Square
                         text_width_ratio = 0.60
                         figure_width_ratio = 0.40
                     else: # Wide, Medium, Large, Extra
@@ -539,13 +549,18 @@ class LaTeXGenerator:
             figure_content = ""
             if figure_data_explanation:
                 figure_content = self.figure_renderer.render(figure_data_explanation)
-            
+
             # 格式化詳解內容
             formatted_explanation = self.latex_structure.format_latex_content(explanation)
-            
+
             # *** 修正：使用單個 tcolorbox，內部處理佈局 (Plan C.1) ***
             explanation_figure_position = question.get('explanation_figure_position', 'right') # 預設 'right'
             explanation_text_only = f"\\textbf{{{question_num_in_round}.}} {formatted_explanation}"
+
+            # 讀取 layout_explanation 參數（如果存在）
+            layout_explanation = None
+            if figure_data_explanation and isinstance(figure_data_explanation, dict):
+                layout_explanation = figure_data_explanation.get('layout_explanation')
 
             inner_content = "" # 用於構建 tcolorbox 的內部內容
             if figure_content:
@@ -556,10 +571,15 @@ class LaTeXGenerator:
                     right_figure = f"\\resizebox{{\\linewidth}}{{!}}{{{figure_content}}}" # \linewidth = minipage width
                     right_mp = f"\\begin{{minipage}}[c]{{0.38\\linewidth}}\n  \\centering\n  {right_figure}\n\\end{{minipage}}"
                     inner_content = f"{left_mp}\\hfill{right_mp}"
-                    
+
                 elif explanation_figure_position == 'bottom':
-                    # 圖片置下：在 tcolorbox 內部上下排列，使用 0.9 寬度留出左右邊白
-                    bottom_figure = f"\\resizebox{{0.9\\linewidth}}{{!}}{{{figure_content}}}"
+                    # 讀取自訂寬度比例，預設 0.65
+                    width_ratio = 0.65
+                    if layout_explanation and 'width_ratio' in layout_explanation:
+                        width_ratio = layout_explanation['width_ratio']
+
+                    # 圖片置下：在 tcolorbox 內部上下排列
+                    bottom_figure = f"\\resizebox{{{width_ratio}\\linewidth}}{{!}}{{{figure_content}}}"
                     inner_content = f"{explanation_text_only}\n\\par\\medskip\\centering\n{bottom_figure}"
                     
                 else: # 無法識別的位置或 'none'，視為只有文字

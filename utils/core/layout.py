@@ -53,7 +53,7 @@ class GridManager:
     負責管理多頁面的網格狀態，追蹤每個位置的佔用情況。
     """
     
-    def __init__(self, grid_width: int = 4, grid_height: int = 8):
+    def __init__(self, grid_width: int = 4, grid_height: int = 10):
         """初始化網格管理器
         
         Args:
@@ -285,7 +285,7 @@ class LayoutEngine:
     
     def __init__(self, 
                 grid_width: int = 4, 
-                grid_height: int = 8,
+                grid_height: int = 10,
                 placement_strategy: Optional[PlacementStrategy] = None):
         """初始化佈局引擎
         

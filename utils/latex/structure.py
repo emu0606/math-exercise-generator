@@ -42,12 +42,14 @@ class LaTeXStructure:
             修改此方法不會影響簡答頁或詳解頁
         """
         font_path = self.config.font_path
+        # 轉換日期為八碼格式 (YYYY-MM-DD -> YYYYMMDD)
+        date_str = self.current_date.replace('-', '')
 
         return r"""\documentclass[a4paper,11pt]{article}
 
 % 基礎套件
 \usepackage{xeCJK}
-\usepackage[margin=1.8cm]{geometry}
+\usepackage[margin=1.8cm, footskip=1cm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usepackage{fancyhdr}
@@ -90,7 +92,8 @@ class LaTeXStructure:
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
-\fancyfoot[C]{\thepage}
+\fancyfoot[C]{\small{\thepage}}
+\fancyfoot[R]{\small{""" + date_str + r"""}}
 
 % 段落和列表樣式
 \setlength{\parskip}{0.5em}
@@ -136,12 +139,14 @@ class LaTeXStructure:
             修改此方法不會影響題目頁或詳解頁
         """
         font_path = self.config.font_path
+        # 轉換日期為八碼格式 (YYYY-MM-DD -> YYYYMMDD)
+        date_str = self.current_date.replace('-', '')
 
         return r"""\documentclass[a4paper,11pt]{article}
 
 % 基礎套件
 \usepackage{xeCJK}
-\usepackage[margin=1.8cm]{geometry}
+\usepackage[margin=1.8cm, footskip=1cm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usepackage{fancyhdr}
@@ -183,7 +188,8 @@ class LaTeXStructure:
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
-\fancyfoot[C]{\thepage}
+\fancyfoot[C]{\small{\thepage}}
+\fancyfoot[R]{\small{""" + date_str + r"""}}}
 
 % 段落樣式
 \setlength{\parskip}{0.5em}
@@ -347,12 +353,14 @@ class LaTeXStructure:
             修改此方法不會影響題目頁或簡答頁
         """
         font_path = self.config.font_path
+        # 轉換日期為八碼格式 (YYYY-MM-DD -> YYYYMMDD)
+        date_str = self.current_date.replace('-', '')
 
         return r"""\documentclass[a4paper,11pt]{article}
 
 % 基礎套件
 \usepackage{xeCJK}
-\usepackage[margin=1.8cm]{geometry}
+\usepackage[margin=1.8cm, footskip=1cm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{enumitem}
 \usepackage{fancyhdr}
@@ -396,7 +404,8 @@ class LaTeXStructure:
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
-\fancyfoot[C]{\thepage}
+\fancyfoot[C]{\small{\thepage}}
+\fancyfoot[R]{\small{""" + date_str + r"""}}}
 
 % 段落和欄位樣式
 \setlength{\parskip}{0.5em}
@@ -455,27 +464,40 @@ class LaTeXStructure:
 
     def generate_page_header(self, round_num: int) -> str:
         """生成頁首
-        
+
         Args:
             round_num: 回數
-            
+
         Returns:
-            頁首 LaTeX 內容
+            頁首 LaTeX 內容（高度固定為 1.5cm）
         """
-        header = r"\noindent 第" + str(round_num) + r"回 \hfill \_\_\_月\_\_\_\_日 \hfill 姓名：\_\_\_\_\_\_\_\_\_" + "\n\n"
+        # 頁首內容：第 X 回 + 手寫日期欄（同行空格分開）+ 姓名欄（左下）
+        header_content = (
+            r"{\small 第 " + str(round_num) + r" 回 \quad 日期：\_\_\_\_\_\_\_\_}\\[2pt]" + "\n" +
+            r"{\large 姓名：\_\_\_\_\_\_\_\_\_\_\_\_}"
+        )
+
+        # 漸層裝飾線
+        line_style = r"\tikz[overlay] \shade[left color=gray, right color=white] (0,0) rectangle (\linewidth, 1.2pt);%"
+
+        # 使用 parbox 固定高度為 1.5cm
+        header = (
+            r"\noindent\parbox[t][1.5cm][c]{\textwidth}{%" + "\n" +
+            r"  " + header_content + "\n" +
+            r"  \vfill" + "\n" +
+            r"  " + line_style + "\n" +
+            r"}" + "\n\n"
+        )
+
         return header
     
     def generate_page_footer(self) -> str:
         """生成頁尾
-        
+
         Returns:
-            頁尾 LaTeX 內容
+            空字串（頁尾已由 fancyhdr 接管）
         """
-        footer = r"\vfill" + "\n"
-        footer += r"\begin{center}" + "\n"
-        footer += r"\small{生成日期：" + self.current_date + r"}" + "\n"
-        footer += r"\end{center}" + "\n"
-        return footer
+        return ""  # 返回空字串
     
     def format_latex_content(self, content: str) -> str:
         """格式化 LaTeX 內容
