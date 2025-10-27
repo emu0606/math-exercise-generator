@@ -236,6 +236,10 @@ class TrigEquationSolverGenerator(QuestionGenerator):
             period_latex = latex(period)
             unit = ""
 
+        # tan 函數只需要第一個解（第二個解是週期重複，會產生相同的通解集合）
+        if func_name == "tan":
+            solutions = [solutions[0]]
+
         # 答案格式（注意：換行符必須在數學模式外，否則不會換行）
         if len(solutions) == 1:
             if use_degree:

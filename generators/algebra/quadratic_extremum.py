@@ -852,9 +852,9 @@ $= (x - 2)^2 - 1$
         """取得題目顯示大小
 
         Returns:
-            int: QuestionSize.SQUARE (1x2)
+            int: QuestionSize.MEDIUM.value (4, 2x2布局)
         """
-        return QuestionSize.MEDIUM
+        return QuestionSize.MEDIUM.value
 
     def get_category(self) -> str:
         """取得主類別

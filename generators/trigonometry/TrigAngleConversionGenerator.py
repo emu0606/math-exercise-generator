@@ -22,7 +22,7 @@ import random
 from typing import Dict, Any, List, Tuple, Optional
 
 from utils import get_logger
-from generators.base import QuestionGenerator, register_generator
+from generators.base import QuestionGenerator, QuestionSize, register_generator
 
 
 @register_generator
@@ -592,8 +592,14 @@ class TrigAngleConversionGenerator(QuestionGenerator):
         return "三角函數角度轉換"
 
     def get_question_size(self) -> int:
-        """獲取題目顯示大小"""
-        return 2  # 中等大小，適合角度轉換題目
+        """獲取題目顯示大小
+
+        角度轉換題目使用WIDE尺寸（2x1），適合單行表達式。
+
+        Returns:
+            int: QuestionSize.WIDE.value (2)
+        """
+        return QuestionSize.WIDE.value
 
     def get_subject(self) -> str:
         """獲取科目，數學測驗生成器標準實作"""
